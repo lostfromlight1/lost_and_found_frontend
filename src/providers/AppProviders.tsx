@@ -1,63 +1,28 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { SessionProvider, useSession } from "next-auth/react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { ThemeProvider } from "next-themes"
+import * as React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SessionProvider } from "next-auth/react";
 
-import { useAuthStore } from "@/store/auth-store"
-import { Toaster } from "@/components/ui/sonner"
-
-function AuthStoreHydrator({ children }) {
-  const { data: session, status } = useSession()
-  const setAuth = useAuthStore((state) => state.setAuth)
-  const clearAuth = useAuthStore((state) => state.clearAuth)
-
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      setAuth({
-        user: session.user,
-      })
-      return
-    }
-
-    if (status === "unauthenticated") {
-      clearAuth()
-    }
-  }, [clearAuth, session, setAuth, status])
-
-  return children
-}
-
-export default function AppProviders({ children }) {
-  const [queryClient] = useState(
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  const [queryClient] = React.useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            retry: 1,
+            staleTime: 60 * 1000,
             refetchOnWindowFocus: false,
-          },
-          mutations: {
-            retry: 0,
+            retry: 1,
           },
         },
       })
-  )
+  );
 
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthStoreHydrator>{children}</AuthStoreHydrator>
-          <Toaster position="top-right" richColors />
-        </ThemeProvider>
+        {children}
       </QueryClientProvider>
     </SessionProvider>
-  )
+  );
 }

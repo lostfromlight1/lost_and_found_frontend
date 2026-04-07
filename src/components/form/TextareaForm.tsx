@@ -90,7 +90,6 @@ export default function TextareaForm<TFieldValues extends FieldValues>({
     throw new Error("TextareaForm requires either `control` or `register`.")
   }
 
-  // @ts-expect-error - TS has trouble narrowing nested generic errors, safe to bypass here
   const errorMessage = errors?.[name]?.message as string | undefined
 
   return (

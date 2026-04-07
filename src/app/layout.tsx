@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
 import "./globals.css";
-import AppProviders from "@/providers/AppProviders";
+import { AppProviders } from "@/providers/AppProviders";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -15,16 +15,17 @@ export const metadata: Metadata = {
   description: "A website that helps users post lost and found items",
 };
 
-// Defining the Interface for props
-interface RootLayoutProps {
+export default function RootLayout({
+  children,
+}: Readonly<{
   children: React.ReactNode;
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${roboto.variable} antialiased`}>
-        <AppProviders>{children}</AppProviders>
+    <html lang="en">
+      <body className={roboto.className}>
+        <AppProviders>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

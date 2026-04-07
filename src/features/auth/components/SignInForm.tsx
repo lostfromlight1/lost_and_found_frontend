@@ -5,10 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import CheckboxForm from "@/components/form/CheckboxForm";
 import InputForm from "@/components/form/InputForm";
-import { useLoginAction } from "@/features/auth/hooks/useAuthActions";
+import { useAuthActions } from "@/features/auth/hooks/useAuthActions";
 
-// Local form state includes 'remember', even though the backend API doesn't need it.
-// NextAuth will use the 'remember' flag to configure session max-age.
 interface SignInFormData {
   email: string;
   password: string;
@@ -24,17 +22,13 @@ export function SignInForm() {
     },
   });
 
-  const login = useLoginAction();
+  const { loginAction, isPending } = useAuthActions();
 
   function onSubmit(values: SignInFormData) {
-    // Only send the fields expected by the Java backend's LoginRequest DTO
-    login.mutate({
+    loginAction({
       email: values.email,
       password: values.password,
     });
-    
-    // Note: If you need to handle the 'remember' boolean for NextAuth sessions, 
-    // you would pass it alongside the mutation or handle it inside the auth hook.
   }
 
   return (
@@ -73,10 +67,10 @@ export function SignInForm() {
 
         <Button
           type="submit"
-          disabled={login.isPending}
+          disabled={isPending}
           className="h-11 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
-          {login.isPending ? "Signing in..." : "Sign in"}
+          {isPending ? "Signing in..." : "Sign in"}
         </Button>
       </form>
     </Form>

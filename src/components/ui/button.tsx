@@ -1,13 +1,8 @@
-<<<<<<< Updated upstream
-import * as React from "react"
-=======
 "use client"
 
 import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
->>>>>>> Stashed changes
 import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
@@ -46,22 +41,6 @@ const buttonVariants = cva(
   }
 )
 
-<<<<<<< Updated upstream
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot.Root : "button"
-
-  return (
-    <Comp
-=======
 export interface ButtonProps
   extends React.ComponentPropsWithoutRef<typeof ButtonPrimitive>,
     VariantProps<typeof buttonVariants> {}
@@ -73,7 +52,6 @@ const Button = React.forwardRef<
   return (
     <ButtonPrimitive
       ref={ref}
->>>>>>> Stashed changes
       data-slot="button"
       data-variant={variant}
       data-size={size}
