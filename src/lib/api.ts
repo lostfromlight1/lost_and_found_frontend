@@ -7,6 +7,7 @@ const api = axios.create({
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
+    "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY, 
   },
 });
 
@@ -34,8 +35,6 @@ api.interceptors.response.use(
         unsetAccessTokenAttachedToAxiosDefaults();
       } catch (err) {
         console.error("Error during 401 logout:", err);
-        throw new error ;
-        
       }
     } else {
       const errorMessage =

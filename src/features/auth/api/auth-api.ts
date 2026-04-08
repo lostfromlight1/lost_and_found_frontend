@@ -12,6 +12,7 @@ export const authApi = {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
         },
       }
     );
