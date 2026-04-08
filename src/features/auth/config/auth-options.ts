@@ -1,6 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { authApi } from "../api/auth-api";
+import axios from "axios"; 
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -26,9 +27,18 @@ export const authOptions: NextAuthOptions = {
             accessToken: authData.accessToken,
             role: authData.user.role,
           };
-        } catch (error) {
+        } catch (error: unknown) {
           console.error("Login failed:", error);
-          return null;
+          
+          let errorMessage = "Invalid email or password";
+
+          if (axios.isAxiosError(error) && error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          }
+
+          throw new Error(errorMessage); 
         }
       },
     }),

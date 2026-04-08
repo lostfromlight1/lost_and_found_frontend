@@ -1,20 +1,28 @@
 "use client";
 
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod"; // 1. Import Zod
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import CheckboxForm from "@/components/form/CheckboxForm";
 import InputForm from "@/components/form/InputForm";
 import { useAuthActions } from "@/features/auth/hooks/useAuthActions";
 
-interface SignInFormData {
-  email: string;
-  password: string;
-  remember: boolean;
-}
+const formSchema = z.object({
+  email: z.email({ 
+    error: (issue) => !issue.input ? "Email is required" : "Invalid email address" 
+  }),
+  
+  password: z.string().min(1, "Password is required"),
+  remember: z.boolean(), 
+});
+
+type SignInFormData = z.infer<typeof formSchema>;
 
 export function SignInForm() {
   const form = useForm<SignInFormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
@@ -25,10 +33,12 @@ export function SignInForm() {
   const { loginAction, isPending } = useAuthActions();
 
   function onSubmit(values: SignInFormData) {
+
     loginAction({
       email: values.email,
       password: values.password,
     });
+    
   }
 
   return (
@@ -39,10 +49,10 @@ export function SignInForm() {
           name="email"
           label="Email"
           type="email"
-          required
           placeholder="you@example.com"
           autoComplete="email"
           inputClassName="h-11 rounded-md border-border px-3 text-sm focus-visible:border-primary focus-visible:ring-ring/30"
+          // Removed 'required' because Zod handles it now
         />
 
         <InputForm<SignInFormData>
@@ -50,7 +60,6 @@ export function SignInForm() {
           name="password"
           label="Password"
           type="password"
-          required
           placeholder="Enter your password"
           autoComplete="current-password"
           inputClassName="h-11 rounded-md border-border px-3 text-sm focus-visible:border-primary focus-visible:ring-ring/30"
@@ -61,7 +70,6 @@ export function SignInForm() {
             control={form.control}
             name="remember"
             label="Remember me"
-            rules={{ required: false }}
           />
         </div>
 

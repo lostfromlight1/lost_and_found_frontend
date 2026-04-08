@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
+import { Toaster } from "sonner"; // 1. Import Toaster
 import "./globals.css";
 import { AppProviders } from "@/providers/AppProviders";
 
@@ -9,7 +10,6 @@ const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
 });
 
-// Adding Metadata type for better DX
 export const metadata: Metadata = {
   title: "Lost and Found",
   description: "A website that helps users post lost and found items",
@@ -26,6 +26,8 @@ export default function RootLayout({
         <AppProviders>
           {children}
         </AppProviders>
+        
+        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );
