@@ -1,6 +1,6 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
-import { Toaster } from "sonner"; // 1. Import Toaster
 import "./globals.css";
 import { AppProviders } from "@/providers/AppProviders";
 
@@ -26,8 +26,6 @@ export default function RootLayout({
         <AppProviders>
           {children}
         </AppProviders>
-        
-        <Toaster richColors position="bottom-right" />
       </body>
     </html>
   );

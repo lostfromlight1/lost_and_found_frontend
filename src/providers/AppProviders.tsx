@@ -1,28 +1,45 @@
+// src/providers/AppProviders.tsx
+
 "use client";
 
-import * as React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SessionProvider } from "next-auth/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import { ReactNode, useState } from "react";
+import { SessionSync } from "@/features/auth/components/SessionSync";
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
-  const [queryClient] = React.useState(
+interface AppProvidersProps {
+  children: ReactNode;
+}
+
+export function AppProviders({ children }: AppProvidersProps) {
+  // Initialize React Query client (useState ensures it's not recreated on every render)
+  const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            staleTime: 60 * 1000, // 1 minute
+            retry: 1, // Only retry failed requests once by default
             refetchOnWindowFocus: false,
-            retry: 1,
           },
         },
       })
   );
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        
+        {/* Invisible component that fixes NextAuth after Google OAuth redirects */}
+        <SessionSync />
+
+        {/* Global Toaster for success/error messages */}
+        <Toaster position="top-right" richColors closeButton />
+        
         {children}
-      </QueryClientProvider>
-    </SessionProvider>
+        
+      </SessionProvider>
+    </QueryClientProvider>
   );
 }

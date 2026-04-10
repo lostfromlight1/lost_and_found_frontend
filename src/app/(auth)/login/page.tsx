@@ -1,5 +1,6 @@
+
 import { Metadata } from "next";
-import { SignInForm } from "@/features/auth/components/SignInForm";
+import { LoginForm } from "@/features/auth/components/LoginForm";
 
 export const metadata: Metadata = {
   title: "Login | Lost & Found Dashboard",
@@ -20,8 +21,9 @@ export default function LoginPage() {
         </div>
 
         {/* The feature component encapsulates all form state and API logic */}
-        <SignInForm />
+        <LoginForm/>
       </div>
     </main>
   );
 }
+
