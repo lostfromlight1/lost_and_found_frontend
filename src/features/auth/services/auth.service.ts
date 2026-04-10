@@ -21,11 +21,9 @@ export const loginService = async (data: LoginRequest) => {
   const response = await signIn("credentials", {
     email: data.email,
     password: data.password,
-    redirect: false, // Must be false so React Query can catch the success/error
+    redirect: false, 
   });
 
-  // NextAuth returns an error string instead of throwing when redirect is false.
-  // We throw it so React Query's `onError` can catch it.
   if (response?.error) {
     throw new Error(response.error);
   }
@@ -38,13 +36,11 @@ export const registerService = async (data: RegisterRequest) => {
 
 export const logoutService = async () => {
   try {
-    // 1. Tell Spring Boot to clear the HttpOnly cookies and revoke refresh token
     await logoutApi();
   } catch (error) {
     console.error("Backend logout failed, proceeding with local signout", error);
   } finally {
-    // 2. Clear NextAuth UI session and redirect to login
-    await signOut({ callbackUrl: "/login" });
+    await signOut({ callbackUrl: "/" });
   }
 };
 

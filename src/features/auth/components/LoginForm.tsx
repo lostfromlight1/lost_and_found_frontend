@@ -18,7 +18,6 @@ const formSchema = z.object({
 export type SignInFormData = z.infer<typeof formSchema>;
 
 export function LoginForm() {
-  // Using your custom wrapper
   const form = useAppForm<SignInFormData>({
     schema: formSchema,
     defaultValues: { email: "", password: "", remember: false },
@@ -31,7 +30,10 @@ export function LoginForm() {
   }
 
   const handleGoogleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/oauth2/authorization/google`;
+    // FIX: Remove /api/v1 from the URL base so Spring Security can catch the OAuth redirect natively
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    const baseUrl = new URL(apiUrl).origin;
+    window.location.href = `${baseUrl}/oauth2/authorization/google`;
   };
 
   return (
