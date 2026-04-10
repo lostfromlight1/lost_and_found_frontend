@@ -1,5 +1,3 @@
-// src/features/auth/api/response/auth.response.ts
-
 export interface UserResponse {
   id: number;
   email: string;

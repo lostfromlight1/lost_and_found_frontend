@@ -1,45 +1,55 @@
-// src/proxy.ts
-
-import { getToken } from "next-auth/jwt";
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequestWithAuth } from "next-auth/middleware"; // <-- Import the specific NextAuth type
 
-export async function proxy(req: NextRequest) {
-  // Retrieve the NextAuth session token
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  
-  const pathname = req.nextUrl.pathname;
+export default withAuth(
+  function proxy(req: NextRequestWithAuth) { // <-- Use NextRequestWithAuth here
+    const token = req.nextauth.token;
+    const path = req.nextUrl.pathname;
 
-  // Define route categories
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register") || pathname.startsWith("/verify-email");
-  const isProtectedRoute = pathname.startsWith("/dashboard");
-
-  // Rule 1: If logged in and trying to access auth pages, redirect to dashboard
-  if (isAuthPage && token) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // Rule 2: If NOT logged in and trying to access protected routes, redirect to login
-  if (isProtectedRoute && !token) {
-    let from = req.nextUrl.pathname;
-    if (req.nextUrl.search) {
-      from += req.nextUrl.search;
+    // 1. Force re-login if refresh token failed
+    if (token?.error === "RefreshAccessTokenError") {
+      const url = new URL("/login", req.url);
+      url.searchParams.set("error", "SessionExpired");
+      return NextResponse.redirect(url);
     }
-    // Pass the original URL so we can redirect them back after they log in
-    return NextResponse.redirect(
-      new URL(`/login?callbackUrl=${encodeURIComponent(from)}`, req.url)
-    );
+
+    // 2. Protect Admin Routes
+    if (path.startsWith("/admin")) {
+      if (token?.user?.role !== "ADMIN") {
+        // Redirect non-admins to the standard dashboard
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    }
+    
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ req, token }) => {
+        const path = req.nextUrl.pathname;
+        
+        // Always allow public auth routes to load
+        // This prevents the infinite redirect loop on the login page!
+        if (
+          path.startsWith("/login") || 
+          path.startsWith("/register") || 
+          path.startsWith("/verify-email") ||
+          path.startsWith("/forgot-password") ||
+          path.startsWith("/reset-password") ||
+          path === "/"
+        ) {
+          return true; 
+        }
+
+        // For all other routes matched by the config below, require a token
+        return !!token;
+      },
+    },
   }
+);
 
-  return NextResponse.next();
-}
-
-// Specify exactly which routes this middleware should run on to optimize performance
+// Apply proxy to protected routes
 export const config = {
-  matcher: [
-    "/dashboard/:path*", 
-    "/login", 
-    "/register", 
-    "/verify-email"
-  ],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/settings/:path*"],
 };

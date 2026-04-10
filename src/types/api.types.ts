@@ -1,11 +1,9 @@
-// src/types/api.types.ts
-
-export interface BaseResponse<T> {
+export interface BaseResponse<T = void> {
   timestamp: string;
   apiId: string;
   traceId: string;
   message: string;
-  data: T; 
+  data?: T; 
 }
 
 export interface BaseErrorResponse {

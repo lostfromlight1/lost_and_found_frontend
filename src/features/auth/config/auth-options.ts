@@ -1,113 +1,198 @@
-// src/features/auth/config/auth-options.ts
-
-import { NextAuthOptions } from "next-auth";
+import { NextAuthOptions, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { JWT } from "next-auth/jwt";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+
+// An internal interface that DOES NOT extend User to avoid type collisions
+interface BackendAuthData {
+  id: number;
+  email: string;
+  displayName: string;
+  contactInfo: string;
+  role: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": API_KEY, 
+        "Cookie": `app_refresh_token=${token.refreshToken}` 
+      },
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok || !refreshedTokens.data) {
+      throw new Error("Failed to refresh token");
+    }
+
+    const { accessToken, refreshToken, expiresIn } = refreshedTokens.data;
+
+    return {
+      ...token,
+      accessToken: accessToken,
+      refreshToken: refreshToken ?? token.refreshToken,
+      // FIXED: Removed * 1000 since expiresIn is already in milliseconds
+      expiresAt: Date.now() + expiresIn,
+    } as JWT;
+  } catch (error) {
+    console.error("Error refreshing access token:", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    } as JWT;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60,
+  },
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        action: { label: "Action", type: "text" }, 
       },
-
       async authorize(credentials) {
-        // ----------------------------------------------------------------
-        // PATH A: SILENT SYNC (Used after Google OAuth redirect)
-        // ----------------------------------------------------------------
-        if (credentials?.action === "sync") {
-          try {
-            const res = await fetch(`${API_URL}/users/me`, {
-              method: "GET",
-              headers: {
-                "Accept": "application/json",
-                "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || "your-default-dev-key",
-              },
-              credentials: "include", // Sends the Google cookies!
-            });
-
-            if (!res.ok) return null;
-
-            const responseData = await res.json();
-            const userData = responseData.data;
-
-            return {
-              id: Number(userData.id),
-              email: userData.email,
-              role: userData.role as "USER" | "ADMIN",
-              displayName: userData.displayName,
-            };
-          } catch {
-            return null;
-          }
-        }
-
-        // ----------------------------------------------------------------
-        // PATH B: NORMAL EMAIL/PASSWORD LOGIN
-        // ----------------------------------------------------------------
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required");
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         try {
           const res = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
-            headers: {
+            headers: { 
               "Content-Type": "application/json",
-              "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY || "your-default-dev-key",
+              "X-API-KEY": API_KEY 
             },
-            credentials: "include", 
             body: JSON.stringify({
               email: credentials.email,
               password: credentials.password,
             }),
           });
 
-          const responseData = await res.json();
+          const json = await res.json();
 
-          if (!res.ok) {
-            throw new Error(responseData.message || "Invalid email or password");
+          if (res.ok && json.data) {
+            const { accessToken, refreshToken, expiresIn, user } = json.data;
+            
+            // Cast to unknown then User to safely bypass strict type collision,
+            // mapping exactly to your next-auth.d.ts (id as number, contactInfo as string)
+            return {
+              id: Number(user.id),
+              email: user.email,
+              displayName: user.displayName,
+              contactInfo: user.contactInfo || "", 
+              role: user.role,
+              accessToken,
+              refreshToken,
+              expiresIn,
+            } as unknown as User; 
           }
-
-          const authData = responseData.data;
-
-          return {
-            id: Number(authData.user.id),
-            email: authData.user.email,
-            role: authData.user.role as "USER" | "ADMIN",
-            displayName: authData.user.displayName,
-          };
+          
+          console.error("Login rejected by backend:", json.message);
+          return null;
         } catch (error) {
-          if (error instanceof Error) throw new Error(error.message);
-          throw new Error("Login failed");
+          console.error("Login authorization fetch error:", error);
+          return null;
         }
       },
     }),
   ],
-
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.displayName = user.displayName;
-        token.email = user.email;
+    async jwt({ token, user, account }) {
+      // 1. Handle Google Login Bridge
+      if (account?.provider === "google" && account.id_token) {
+        try {
+          const res = await fetch(`${API_URL}/auth/google`, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "X-API-KEY": API_KEY 
+            },
+            body: JSON.stringify({ idToken: account.id_token }),
+          });
+
+          const json = await res.json();
+
+          if (res.ok && json.data) {
+            const { accessToken, refreshToken, expiresIn, user: backendUser } = json.data;
+            return {
+              ...token,
+              accessToken,
+              refreshToken,
+              // FIXED: Removed * 1000
+              expiresAt: Date.now() + expiresIn,
+              user: {
+                id: Number(backendUser.id),
+                email: backendUser.email,
+                displayName: backendUser.displayName,
+                contactInfo: backendUser.contactInfo || "",
+                role: backendUser.role,
+              }
+            } as JWT;
+          } else {
+             console.error("Backend rejected Google token:", json.message);
+             return { ...token, error: "RefreshAccessTokenError" } as JWT;
+          }
+        } catch (error) {
+          console.error("Google backend auth fetch error:", error);
+          return { ...token, error: "RefreshAccessTokenError" } as JWT; 
+        }
       }
-      return token;
+
+      // 2. Handle Standard Login Bridge
+      if (user) {
+        // Cast via unknown to our internal interface to extract our custom data 
+        // without triggering ESLint 'any' or TS interface collision warnings
+        const customUser = user as unknown as BackendAuthData; 
+        
+        return {
+          ...token,
+          accessToken: customUser.accessToken,
+          refreshToken: customUser.refreshToken,
+          // FIXED: Removed * 1000
+          expiresAt: Date.now() + customUser.expiresIn,
+          user: {
+            id: customUser.id,
+            email: customUser.email,
+            displayName: customUser.displayName,
+            contactInfo: customUser.contactInfo,
+            role: customUser.role,
+          },
+        } as JWT; 
+      }
+
+      // 3. Handle Token Refresh
+      if (Date.now() < (token.expiresAt as number) - 10000) {
+        return token;
+      }
+
+      return refreshAccessToken(token);
     },
     async session({ session, token }) {
-      session.user.id = token.id as number;
-      session.user.role = token.role as "USER" | "ADMIN";
-      session.user.name = token.displayName as string;
-      session.user.email = token.email as string;
+      // Safely map JWT properties to the Session object
+      session.user = token.user as User;
+      session.accessToken = token.accessToken as string;
+      session.error = token.error as "RefreshAccessTokenError" | undefined;
       return session;
     },
   },
-  pages: { signIn: "/login" },
-  session: { strategy: "jwt", maxAge: 15 * 60 },
-  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/login",
+  },
 };

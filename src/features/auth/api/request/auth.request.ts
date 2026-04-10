@@ -1,5 +1,3 @@
-// src/features/auth/api/request/auth.request.ts
-
 export interface LoginRequest {
   email: string;
   password: string;

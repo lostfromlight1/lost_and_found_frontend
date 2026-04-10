@@ -50,12 +50,11 @@ export default function InputForm<TFieldValues extends FieldValues>({
   step,
   ...props
 }: InputFormProps<TFieldValues>) {
-  const activeRules =
-    rules ?? buildDefaultRules(type, label, name, required, readOnly, disabled);
+  const activeRules = rules ?? buildDefaultRules(type, label, name, required, readOnly, disabled);
   const inputType = type === "decimal" ? "number" : type;
-  const resolvedStep =
-    type === "decimal" ? "any" : type === "number" ? "1" : step;
+  const resolvedStep = type === "decimal" ? "any" : type === "number" ? "1" : step;
 
+  // 1. Control Rendering Path (Preferred with Shadcn)
   if (control) {
     return (
       <FormField
@@ -78,7 +77,9 @@ export default function InputForm<TFieldValues extends FieldValues>({
                 readOnly={readOnly}
                 disabled={disabled}
                 className={inputClassName}
+                // CRITICAL FIX: Destructure field and enforce value fallback
                 {...field}
+                value={field.value ?? ""} 
                 {...props}
               />
             </FormControl>
@@ -92,6 +93,7 @@ export default function InputForm<TFieldValues extends FieldValues>({
     );
   }
 
+  // 2. Register Rendering Path (Fallback)
   if (!register) {
     throw new Error("InputForm requires either `control` or `register`.");
   }
@@ -114,6 +116,8 @@ export default function InputForm<TFieldValues extends FieldValues>({
         readOnly={readOnly}
         disabled={disabled}
         className={inputClassName}
+        // CRITICAL FIX: Ensure the raw register field defaults appropriately 
+        // though RHF handles this internally for standard registers, it's good practice.
         {...registeredField}
         {...props}
         aria-invalid={Boolean(errorMessage)}
@@ -138,8 +142,7 @@ function buildDefaultRules<TFieldValues extends FieldValues>(
 ): RegisterOptions<TFieldValues, Path<TFieldValues>> {
   if (readOnly || disabled) return {};
 
-  const fieldDisplayName =
-    label || (name ? name.charAt(0).toUpperCase() + name.slice(1) : "Field");
+  const fieldDisplayName = label || (name ? name.charAt(0).toUpperCase() + name.slice(1) : "Field");
   const base = required ? { required: `${fieldDisplayName} is required` } : {};
 
   switch (type) {

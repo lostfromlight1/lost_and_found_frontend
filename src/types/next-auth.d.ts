@@ -1,28 +1,43 @@
-// src/types/next-auth.d.ts
-
-import { DefaultSession } from "next-auth";
+import { DefaultSession, DefaultUser } from "next-auth";
+import { DefaultJWT } from "next-auth/jwt";
 
 declare module "next-auth" {
-  interface User {
-    id: number;
-    email: string;
-    role: "USER" | "ADMIN";
-    displayName: string;
-  }
-
   interface Session {
+    accessToken: string;
+    error?: "RefreshAccessTokenError";
     user: {
       id: number;
       email: string;
+      displayName: string;
+      contactInfo: string;
       role: "USER" | "ADMIN";
-      name: string; 
     } & DefaultSession["user"];
   }
 
-  interface JWT {
+  interface User extends DefaultUser {
     id: number;
-    role: "USER" | "ADMIN";
-    displayName: string;
     email: string;
+    displayName: string;
+    contactInfo: string;
+    role: "USER" | "ADMIN";
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT extends DefaultJWT {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number;
+    error?: "RefreshAccessTokenError";
+    user: {
+      id: number;
+      email: string;
+      displayName: string;
+      contactInfo: string;
+      role: "USER" | "ADMIN";
+    };
   }
 }

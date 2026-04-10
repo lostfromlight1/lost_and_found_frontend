@@ -1,9 +1,7 @@
-// src/features/auth/services/auth.service.ts
-
-import { signIn, signOut } from "next-auth/react";
 import {
   changePasswordApi,
   confirmPasswordResetApi,
+  loginApi,
   logoutApi,
   registerApi,
   requestPasswordResetApi,
@@ -18,16 +16,7 @@ import {
 } from "../api/request/auth.request";
 
 export const loginService = async (data: LoginRequest) => {
-  const response = await signIn("credentials", {
-    email: data.email,
-    password: data.password,
-    redirect: false, 
-  });
-
-  if (response?.error) {
-    throw new Error(response.error);
-  }
-  return response;
+  return await loginApi(data);
 };
 
 export const registerService = async (data: RegisterRequest) => {
@@ -35,13 +24,7 @@ export const registerService = async (data: RegisterRequest) => {
 };
 
 export const logoutService = async () => {
-  try {
-    await logoutApi();
-  } catch (error) {
-    console.error("Backend logout failed, proceeding with local signout", error);
-  } finally {
-    await signOut({ callbackUrl: "/" });
-  }
+  return await logoutApi();
 };
 
 export const changePasswordService = async (data: ChangePasswordRequest) => {
