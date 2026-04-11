@@ -5,7 +5,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1
 
 export const api = axios.create({
   baseURL: API_URL,
-  withCredentials: false, 
+  withCredentials: true, 
   headers: {
     "Content-Type": "application/json",
     ...(process.env.NEXT_PUBLIC_API_KEY && { "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY }),
@@ -28,9 +28,25 @@ api.interceptors.response.use(
     return response.data?.data !== undefined ? response.data.data : response;
   },
   async (error) => {
-    if (error.response?.status === 401) {
-      await signOut({ callbackUrl: "/login?error=SessionExpired" });
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const session = await getSession();
+
+        if (session?.accessToken && !session.error) {
+          originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
+          return api(originalRequest);
+        }
+      } catch (e) {
+        console.error("Failed to refresh session mid-request", e);
+      }
+
+      await signOut({ callbackUrl: "/login" });
     }
+
     return Promise.reject(error);
   }
 );

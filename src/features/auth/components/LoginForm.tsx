@@ -1,4 +1,3 @@
-// src/features/auth/components/LoginForm.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -6,10 +5,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation"; 
 import { useLogin } from "@/features/auth/hooks/useAuthMutations";
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import InputForm from "@/components/form/InputForm";
+import { Suspense } from "react";
 
 const loginSchema = z.object({
   email: z.string().min(1, { message: "Email is required" }).email({ message: "Invalid email format" }),
@@ -27,15 +28,16 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export function LoginForm() {
+function LoginFormContent() {
   const { mutate: login, isPending } = useLogin();
+  const searchParams = useSearchParams();
+  
+  const urlError = searchParams.get("error");
+  const urlMessage = searchParams.get("message");
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = (data: LoginFormValues) => {
@@ -52,6 +54,22 @@ export function LoginForm() {
         <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
         <p className="text-sm text-gray-500 mt-2">Log in to your account</p>
       </div>
+
+      {/* SUCCESS MESSAGE */}
+      {urlMessage && (
+        <div className="bg-green-50 text-green-700 p-3 rounded-md text-sm mb-6 text-center border border-green-200">
+          {urlMessage}
+        </div>
+      )}
+
+      {/* ERROR MESSAGE */}
+      {urlError && (
+        <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm mb-6 text-center border border-red-200">
+          {urlError === "OAuthAccountCollision" 
+            ? "Email already registered. Please log in with your password."
+            : urlError}
+        </div>
+      )}
 
       <Button
         type="button"
@@ -89,10 +107,7 @@ export function LoginForm() {
               required
             />
             <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-xs text-blue-600 hover:underline"
-              >
+              <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -111,5 +126,13 @@ export function LoginForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export function LoginForm() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-md bg-white p-8 border rounded-lg shadow-sm h-96 animate-pulse" />}>
+      <LoginFormContent />
+    </Suspense>
   );
 }

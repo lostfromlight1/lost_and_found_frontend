@@ -6,7 +6,6 @@ import { JWT } from "next-auth/jwt";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
 
-// An internal interface that DOES NOT extend User to avoid type collisions
 interface BackendAuthData {
   id: number;
   email: string;
@@ -18,39 +17,51 @@ interface BackendAuthData {
   expiresIn: number;
 }
 
+let refreshPromise: Promise<JWT> | null = null;
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  try {
-    const response = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-KEY": API_KEY, 
-        "Cookie": `app_refresh_token=${token.refreshToken}` 
-      },
-    });
-
-    const refreshedTokens = await response.json();
-
-    if (!response.ok || !refreshedTokens.data) {
-      throw new Error("Failed to refresh token");
-    }
-
-    const { accessToken, refreshToken, expiresIn } = refreshedTokens.data;
-
-    return {
-      ...token,
-      accessToken: accessToken,
-      refreshToken: refreshToken ?? token.refreshToken,
-      // FIXED: Removed * 1000 since expiresIn is already in milliseconds
-      expiresAt: Date.now() + expiresIn,
-    } as JWT;
-  } catch (error) {
-    console.error("Error refreshing access token:", error);
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    } as JWT;
+  if (refreshPromise) {
+    return refreshPromise;
   }
+
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-KEY": API_KEY, 
+          "Cookie": `app_refresh_token=${token.refreshToken}` 
+        },
+        body: JSON.stringify({ refreshToken: token.refreshToken })
+      });
+
+      const refreshedTokens = await response.json();
+
+      if (!response.ok || !refreshedTokens.data) {
+        throw new Error("Failed to refresh token");
+      }
+
+      const { accessToken, refreshToken, expiresIn } = refreshedTokens.data;
+
+      return {
+        ...token,
+        accessToken: accessToken,
+        refreshToken: refreshToken ?? token.refreshToken,
+        expiresAt: Date.now() + Number(expiresIn),
+      } as JWT;
+    } catch (error) {
+      console.log("Session expired or invalid. Forcing re-login.", error);
+      return {
+        ...token,
+        error: "RefreshAccessTokenError",
+      } as JWT;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -62,6 +73,9 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      httpOptions: {
+        timeout: 10000, 
+      },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -70,7 +84,9 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email and password are required");
+        }
 
         try {
           const res = await fetch(`${API_URL}/auth/login`, {
@@ -89,9 +105,6 @@ export const authOptions: NextAuthOptions = {
 
           if (res.ok && json.data) {
             const { accessToken, refreshToken, expiresIn, user } = json.data;
-            
-            // Cast to unknown then User to safely bypass strict type collision,
-            // mapping exactly to your next-auth.d.ts (id as number, contactInfo as string)
             return {
               id: Number(user.id),
               email: user.email,
@@ -100,22 +113,23 @@ export const authOptions: NextAuthOptions = {
               role: user.role,
               accessToken,
               refreshToken,
-              expiresIn,
+              expiresIn: Number(expiresIn),
             } as unknown as User; 
           }
           
-          console.error("Login rejected by backend:", json.message);
-          return null;
-        } catch (error) {
-          console.error("Login authorization fetch error:", error);
-          return null;
+          throw new Error(json.message || "Invalid email or password");
+          
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            throw new Error(error.message);
+          }
+          throw new Error("Unable to connect to the server.");
         }
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      // 1. Handle Google Login Bridge
       if (account?.provider === "google" && account.id_token) {
         try {
           const res = await fetch(`${API_URL}/auth/google`, {
@@ -135,8 +149,8 @@ export const authOptions: NextAuthOptions = {
               ...token,
               accessToken,
               refreshToken,
-              // FIXED: Removed * 1000
-              expiresAt: Date.now() + expiresIn,
+              // CRITICAL FIX: Wrap in Number()
+              expiresAt: Date.now() + Number(expiresIn),
               user: {
                 id: Number(backendUser.id),
                 email: backendUser.email,
@@ -146,27 +160,22 @@ export const authOptions: NextAuthOptions = {
               }
             } as JWT;
           } else {
-             console.error("Backend rejected Google token:", json.message);
-             return { ...token, error: "RefreshAccessTokenError" } as JWT;
+             throw new Error("OAuthAccountCollision");
           }
         } catch (error) {
-          console.error("Google backend auth fetch error:", error);
-          return { ...token, error: "RefreshAccessTokenError" } as JWT; 
+          throw new Error("OAuthCallbackError: "); 
         }
       }
 
-      // 2. Handle Standard Login Bridge
       if (user) {
-        // Cast via unknown to our internal interface to extract our custom data 
-        // without triggering ESLint 'any' or TS interface collision warnings
         const customUser = user as unknown as BackendAuthData; 
         
         return {
           ...token,
           accessToken: customUser.accessToken,
           refreshToken: customUser.refreshToken,
-          // FIXED: Removed * 1000
-          expiresAt: Date.now() + customUser.expiresIn,
+          // CRITICAL FIX: Wrap in Number()
+          expiresAt: Date.now() + Number(customUser.expiresIn),
           user: {
             id: customUser.id,
             email: customUser.email,
@@ -177,7 +186,6 @@ export const authOptions: NextAuthOptions = {
         } as JWT; 
       }
 
-      // 3. Handle Token Refresh
       if (Date.now() < (token.expiresAt as number) - 10000) {
         return token;
       }
@@ -185,7 +193,6 @@ export const authOptions: NextAuthOptions = {
       return refreshAccessToken(token);
     },
     async session({ session, token }) {
-      // Safely map JWT properties to the Session object
       session.user = token.user as User;
       session.accessToken = token.accessToken as string;
       session.error = token.error as "RefreshAccessTokenError" | undefined;

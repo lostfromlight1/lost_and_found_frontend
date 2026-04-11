@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { signIn, signOut } from "next-auth/react";
 import { BaseErrorResponse } from "@/types/api.types";
 import {
@@ -20,16 +20,26 @@ import {
   RegisterRequest,
 } from "../api/request/auth.request";
 
-const handleApiError = (error: AxiosError<BaseErrorResponse> | Error) => {
-  if (axios.isAxiosError(error) && error.response?.data) {
-    const validationErrors = error.response.data.validationErrors;
-    if (validationErrors && Object.keys(validationErrors).length > 0) {
-      Object.values(validationErrors).forEach((msg) => toast.error(msg as string));
+const handleApiError = (error: unknown) => {
+  if (axios.isAxiosError(error)) {
+    const responseData = error.response?.data as BaseErrorResponse | undefined;
+
+    if (responseData) {
+      const { message, validationErrors } = responseData;
+
+      if (validationErrors && Object.keys(validationErrors).length > 0) {
+        Object.values(validationErrors).forEach((msg) => toast.error(String(msg)));
+      } 
+      else {
+        toast.error(message || "An unexpected server error occurred");
+      }
     } else {
-      toast.error(error.response.data.message || "An unexpected error occurred");
+      toast.error(error.message || "Network error. Unable to connect to the server.");
     }
-  } else {
+  } else if (error instanceof Error) {
     toast.error(error.message || "An unexpected error occurred");
+  } else {
+    toast.error("An unknown error occurred");
   }
 };
 
@@ -55,7 +65,7 @@ export const useLogin = () => {
       router.refresh(); 
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Invalid credentials");
+      toast.error(error.message || "Invalid email or password");
     },
   });
 };
@@ -86,8 +96,8 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: (data: RegisterRequest) => registerService(data),
     onSuccess: () => {
-      router.push("/verify-email");
       toast.success("Registration successful! Please check your email for the verification code.");
+      router.push("/verify-email");
     },
     onError: handleApiError,
   });
@@ -97,7 +107,7 @@ export const useChangePassword = () => {
   return useMutation({
     mutationFn: (data: ChangePasswordRequest) => changePasswordService(data),
     onSuccess: () => {
-        toast.success("Password changed successfully");
+      toast.success("Password changed successfully.");
     },
     onError: handleApiError,
   });
@@ -107,7 +117,7 @@ export const useRequestPasswordReset = () => {
   return useMutation({
     mutationFn: (email: string) => requestPasswordResetService(email),
     onSuccess: () => {
-        toast.success("If the email exists, a reset link has been sent.");
+      toast.success("If the email exists, a reset link has been sent.");
     },
     onError: handleApiError,
   });
@@ -127,14 +137,8 @@ export const useConfirmPasswordReset = () => {
 };
 
 export const useVerifyEmail = () => {
-  const router = useRouter();
-
   return useMutation({
     mutationFn: (token: string) => verifyEmailService(token),
-    onSuccess: () => {
-      toast.success("Email verified successfully!");
-      router.push("/login?verified=true");
-    },
     onError: handleApiError,
   });
 };
@@ -143,7 +147,7 @@ export const useResendVerification = () => {
   return useMutation({
     mutationFn: (email: string) => resendVerificationService(email),
     onSuccess: () => {
-        toast.success("Verification email resent.");
+      toast.success("A new verification code has been sent to your email.");
     },
     onError: handleApiError,
   });

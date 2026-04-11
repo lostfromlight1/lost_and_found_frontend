@@ -10,10 +10,8 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 1. Fetch the user's session
   const session = await getServerSession(authOptions);
 
-  // 2. Double-check protection (Middleware usually handles this, but this is safe)
   if (!session) {
     redirect("/login");
   }
@@ -76,7 +74,6 @@ export default async function ProtectedLayout({
         {/* TOP HEADER */}
         <header className="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm z-10">
           <div className="font-medium text-slate-800">
-            {/* You can add a mobile menu toggle button here later */}
           </div>
           
           <div className="flex items-center gap-4 text-sm">

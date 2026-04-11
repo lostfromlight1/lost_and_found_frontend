@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// ... keep all your types exactly the same ...
 type FormModalMode = "create" | "update";
 type FormModalSize = "sm" | "md" | "lg" | "xl" | "full";
 

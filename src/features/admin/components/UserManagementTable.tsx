@@ -13,18 +13,16 @@ export function UserManagementTable() {
   const [page, setPage] = useState(0);
   const [userToBan, setUserToBan] = useState<UserResponse | null>(null);
 
-  // Fetching data from your Spring Boot UserController
   const { data, isLoading } = useUsers(search, page);
   const { mutate: banUser, isPending: isBanning } = useBanUser();
 
   const handleConfirmBan = () => {
     if (userToBan) {
-      banUser(Number(userToBan.id)); // Assuming UserResponse id is number/string
+      banUser(Number(userToBan.id)); 
       setUserToBan(null);
     }
   };
 
-  // Explicitly typing the columns based on UserResponse
   const columns: TableColumn<UserResponse>[] = [
     { 
       key: "id", 
@@ -72,7 +70,7 @@ export function UserManagementTable() {
     <div className="space-y-4">
       <AppTable
         columns={columns}
-        data={(data?.content as UserResponse[]) || []} // Handling paginated response
+        data={(data?.content as UserResponse[]) || []} 
         loading={isLoading}
         searchValue={search}
         onSearch={(v) => { setSearch(v); setPage(0); }}
