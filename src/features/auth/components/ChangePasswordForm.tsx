@@ -20,13 +20,23 @@ export function ChangePasswordForm() {
   const { mutate: change, isPending } = useChangePassword();
   const form = useForm<z.infer<typeof passwordSchema>>({ resolver: zodResolver(passwordSchema) });
 
+  const onSubmit = (data: z.infer<typeof passwordSchema>) => {
+    change(data, {
+      onSuccess: () => {
+        form.reset({ oldPassword: "", newPassword: "", confirmPassword: "" });
+      }
+    });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(d => change(d))} className="space-y-4 max-w-md">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">
         <InputForm control={form.control} name="oldPassword" label="Current Password" type="password" required />
         <InputForm control={form.control} name="newPassword" label="New Password" type="password" required />
         <InputForm control={form.control} name="confirmPassword" label="Confirm Password" type="password" required />
-        <Button type="submit" variant="destructive" disabled={isPending}>Update Password</Button>
+        <Button type="submit" variant="destructive" disabled={isPending}>
+          {isPending ? "Updating..." : "Update Password"}
+        </Button>
       </form>
     </Form>
   );

@@ -28,18 +28,18 @@ const handleApiError = (error: unknown) => {
       const { message, validationErrors } = responseData;
 
       if (validationErrors && Object.keys(validationErrors).length > 0) {
-        Object.values(validationErrors).forEach((msg) => toast.error(String(msg)));
+        Object.values(validationErrors).forEach((msg) => toast.warning(String(msg)));
       } 
       else {
-        toast.error(message || "An unexpected server error occurred");
+        toast.warning(message || "We encountered a slight issue. Please try again.");
       }
     } else {
-      toast.error(error.message || "Network error. Unable to connect to the server.");
+      toast.warning("Network issue. Please check your connection and try again.");
     }
   } else if (error instanceof Error) {
-    toast.error(error.message || "An unexpected error occurred");
+    toast.warning(error.message || "Something went slightly wrong. Please try again.");
   } else {
-    toast.error("An unknown error occurred");
+    toast.warning("An unexpected issue occurred. Please try again.");
   }
 };
 
@@ -65,7 +65,7 @@ export const useLogin = () => {
       router.refresh(); 
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Invalid email or password");
+      toast.warning(error.message || "Invalid email or password");
     },
   });
 };

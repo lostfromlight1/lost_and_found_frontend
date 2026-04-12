@@ -10,7 +10,7 @@ import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialo
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import InputForm from "@/components/form/InputForm";
-import { CategoryResponse } from "@/features/categories/api/category.api";
+import { CategoryResponse } from "@/features/categories/api/response/categories.response";
 import {
   useCategories,
   useCreateCategory,

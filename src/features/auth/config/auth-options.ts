@@ -129,7 +129,20 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      
+      if (trigger === "update" && session) {
+        if (token.user) {
+          const tUser = token.user as { displayName?: string; contactInfo?: string };
+          tUser.displayName = session.displayName || tUser.displayName;
+          
+          if (session.contactInfo !== undefined) {
+            tUser.contactInfo = session.contactInfo;
+          }
+        }
+        return token;
+      }
+
       if (account?.provider === "google" && account.id_token) {
         try {
           const res = await fetch(`${API_URL}/auth/google`, {
@@ -149,7 +162,6 @@ export const authOptions: NextAuthOptions = {
               ...token,
               accessToken,
               refreshToken,
-              // CRITICAL FIX: Wrap in Number()
               expiresAt: Date.now() + Number(expiresIn),
               user: {
                 id: Number(backendUser.id),
@@ -162,8 +174,8 @@ export const authOptions: NextAuthOptions = {
           } else {
              throw new Error("OAuthAccountCollision");
           }
-        } catch (error) {
-          throw new Error("OAuthCallbackError: "); 
+        } catch { 
+          throw new Error("OAuthCallbackError"); 
         }
       }
 
@@ -174,7 +186,6 @@ export const authOptions: NextAuthOptions = {
           ...token,
           accessToken: customUser.accessToken,
           refreshToken: customUser.refreshToken,
-          // CRITICAL FIX: Wrap in Number()
           expiresAt: Date.now() + Number(customUser.expiresIn),
           user: {
             id: customUser.id,
