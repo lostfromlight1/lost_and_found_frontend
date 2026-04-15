@@ -28,7 +28,9 @@ const profileSchema = z.object({
 });
 
 export function ProfileSettingsForm() {
-  const { data: session } = useSession();
+  // 1. FIXED: Extract the 'update' function from useSession
+  const { data: session, update: updateSession } = useSession();
+  
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadAvatar, isPending: isUploading } = useUploadAvatar();
   
@@ -39,7 +41,6 @@ export function ProfileSettingsForm() {
     defaultValues: { displayName: "", contactInfo: "" },
   });
 
-  // Resets the initial state once session loads, enabling accurate 'dirty' checks
   useEffect(() => {
     if (session?.user) {
       form.reset({ 
@@ -57,18 +58,12 @@ export function ProfileSettingsForm() {
       return;
     }
 
-    /* NOTE: If your backend still fails when sending the unmodified field alongside the modified one 
-      (e.g., a database uniqueness constraint bug), you might need to adjust your API to accept Partial data:
-      
-      const payload: Partial<typeof data> = {};
-      if (dirtyFields.displayName) payload.displayName = data.displayName;
-      if (dirtyFields.contactInfo) payload.contactInfo = data.contactInfo;
-      updateProfile(payload, ...);
-    */
-
     updateProfile(data, { 
-      onSuccess: () => {
+      // 2. FIXED: Force session refresh after updating profile info
+      onSuccess: async () => {
+        await updateSession(); 
         form.reset(data); 
+        toast.success("Profile updated successfully!");
       } 
     });
   };
@@ -80,7 +75,14 @@ export function ProfileSettingsForm() {
         toast.error("Image size must be less than 5MB");
         return;
       }
-      uploadAvatar(file);
+      
+      // 3. FIXED: Force session refresh after uploading avatar
+      uploadAvatar(file, {
+        onSuccess: async () => {
+          await updateSession();
+          toast.success("Profile picture updated!");
+        }
+      });
     }
   };
 
