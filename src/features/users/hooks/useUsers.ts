@@ -61,7 +61,7 @@ export const useUnbanUser = () => {
 };
 
 export const useUpdateProfile = () => {
-  const { update } = useSession();
+  const { data: session, update } = useSession();
 
   return useMutation<UserResponse, unknown, UpdateProfileRequest>({
     mutationFn: (data) => updateProfileService(data),
@@ -70,13 +70,14 @@ export const useUpdateProfile = () => {
       
       await update({
         user: {
+          ...session?.user, 
           id: updatedUser.id,
           email: updatedUser.email,
           displayName: updatedUser.displayName,
           contactInfo: updatedUser.contactInfo ?? "",
           role: updatedUser.role,
-          avatarUrl: updatedUser.avatarUrl ?? null,
-          avatarPublicId: updatedUser.avatarPublicId ?? null,
+          avatarUrl: updatedUser.avatarUrl ?? session?.user?.avatarUrl ?? null,
+          avatarPublicId: updatedUser.avatarPublicId ?? session?.user?.avatarPublicId ?? null,
           isLocked: updatedUser.isLocked,
         },
       });
@@ -84,7 +85,6 @@ export const useUpdateProfile = () => {
     onError: handleApiError,
   });
 };
-
 export const useUploadAvatar = () => {
   const { update } = useSession();
 

@@ -70,7 +70,8 @@ export default function SelectForm<TFieldValues extends FieldValues>({
           <Select
             disabled={disabled}
             onValueChange={field.onChange}
-            value={field.value}
+            value={field.value !== undefined && field.value !== null ? String(field.value) : undefined}
+            defaultValue={field.value !== undefined && field.value !== null ? String(field.value) : undefined}
           >
             <FieldControl>
               <SelectTrigger className={triggerClassName ?? "w-full"}>
@@ -84,8 +85,7 @@ export default function SelectForm<TFieldValues extends FieldValues>({
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          {description ? (
+          </Select>          {description ? (
             <FieldDescription>{description}</FieldDescription>
           ) : null}
           <FieldMessage />

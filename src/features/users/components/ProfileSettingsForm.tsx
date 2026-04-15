@@ -12,8 +12,19 @@ import { Button } from "@/components/ui/button";
 import InputForm from "@/components/form/InputForm";
 
 const profileSchema = z.object({
-  displayName: z.string().min(1, { message: "Required" }).max(100),
-  contactInfo: z.string().max(255).optional().or(z.literal("")),
+  displayName: z
+    .string()
+    .trim()
+    .min(1, { message: "Display name is required" })
+    .max(100),
+  contactInfo: z
+    .string()
+    .trim()
+    .min(1, { message: "Contact info is required" })
+    .regex(/^\+[0-9]+$/, { 
+      message: "Must start with '+' followed by numbers (e.g., +959886455064)" 
+    })
+    .max(255),
 });
 
 export function ProfileSettingsForm() {
@@ -28,21 +39,38 @@ export function ProfileSettingsForm() {
     defaultValues: { displayName: "", contactInfo: "" },
   });
 
+  // Resets the initial state once session loads, enabling accurate 'dirty' checks
   useEffect(() => {
     if (session?.user) {
       form.reset({ 
-        displayName: session.user.displayName, 
+        displayName: session.user.displayName || "", 
         contactInfo: session.user.contactInfo || ""
       });
     }
   }, [session, form]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    if (!form.formState.isDirty) {
+    const { dirtyFields } = form.formState;
+
+    if (Object.keys(dirtyFields).length === 0) {
       toast.warning("Please make a change to update.");
       return;
     }
-    updateProfile(data, { onSuccess: () => form.reset(data) });
+
+    /* NOTE: If your backend still fails when sending the unmodified field alongside the modified one 
+      (e.g., a database uniqueness constraint bug), you might need to adjust your API to accept Partial data:
+      
+      const payload: Partial<typeof data> = {};
+      if (dirtyFields.displayName) payload.displayName = data.displayName;
+      if (dirtyFields.contactInfo) payload.contactInfo = data.contactInfo;
+      updateProfile(payload, ...);
+    */
+
+    updateProfile(data, { 
+      onSuccess: () => {
+        form.reset(data); 
+      } 
+    });
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,8 +143,8 @@ export function ProfileSettingsForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <InputForm control={form.control} name="displayName" label="Display Name" required />
-          <InputForm control={form.control} name="contactInfo" label="Contact Info" placeholder="e.g. +1 234 567 8900" />
-          <Button type="submit" disabled={isUpdating}>
+          <InputForm control={form.control} name="contactInfo" label="Contact Info" placeholder="e.g. +959886455064" required />
+          <Button type="submit" disabled={isUpdating || !form.formState.isDirty}>
             {isUpdating ? "Saving..." : "Update Profile"}
           </Button>
         </form>
