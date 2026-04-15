@@ -16,7 +16,8 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
-  const userRole = session?.user?.role;
+  const user = session.user;
+  const userRole = user?.role;
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -74,15 +75,26 @@ export default async function ProtectedLayout({
         {/* TOP HEADER */}
         <header className="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm z-10">
           <div className="font-medium text-slate-800">
+            {/* Optional Breadcrumbs or Title could go here */}
           </div>
           
           <div className="flex items-center gap-4 text-sm">
             <span className="text-slate-500">
-              Logged in as <span className="font-semibold text-slate-900">{session.user?.email}</span>
+              Logged in as <span className="font-semibold text-slate-900">{user?.displayName || user?.email}</span>
             </span>
-            <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-              {session.user?.displayName?.charAt(0).toUpperCase() || "U"}
-            </div>
+            
+            {/* Renders the Cloudinary Avatar if available, otherwise falls back to the initial */}
+            {user?.avatarUrl ? (
+              <img 
+                src={user.avatarUrl} 
+                alt={user.displayName || "User avatar"} 
+                className="h-8 w-8 rounded-full object-cover border border-slate-200"
+              />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                {user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+            )}
           </div>
         </header>
 

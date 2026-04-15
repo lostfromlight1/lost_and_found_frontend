@@ -3,55 +3,58 @@ import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { BaseErrorResponse } from "@/types/api.types";
-import { 
-  getAllUsersApi, 
-  searchUsersApi, 
-  banUserApi, 
-  updateProfileApi 
-} from "../api/users.api";
+import {
+  getAllUsersService,
+  searchUsersService,
+  banUserService,
+  unbanUserService,
+  updateProfileService,
+  uploadAvatarService,
+} from "../services/users.service";
 import { UpdateProfileRequest } from "../api/request/users.request";
+import { UserResponse } from "../api/response/users.response";
 
 const handleApiError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     const responseData = error.response?.data as BaseErrorResponse | undefined;
-
-    if (responseData) {
-      const { message, validationErrors } = responseData;
-
-      if (validationErrors && Object.keys(validationErrors).length > 0) {
-        Object.values(validationErrors).forEach((msg) => toast.warning(String(msg)));
-      } else {
-        const lowerMsg = (message || "").toLowerCase();
-        if (lowerMsg.includes("already banned") || lowerMsg.includes("already locked")) {
-          toast.warning("This user is already banned.");
-        } else {
-          toast.warning(message || "We encountered a slight issue. Please try again.");
-        }
-      }
+    if (responseData?.validationErrors) {
+      Object.values(responseData.validationErrors).forEach((msg) =>
+        toast.warning(String(msg))
+      );
     } else {
-      toast.warning("Network issue. Please check your connection and try again.");
+      toast.warning(responseData?.message || "An error occurred");
     }
-  } else if (error instanceof Error) {
-    toast.warning(error.message || "Something went slightly wrong. Please try again.");
   } else {
-    toast.warning("An unexpected issue occurred. Please try again.");
+    toast.error("An unexpected error occurred");
   }
 };
 
 export const useUsers = (query: string, page = 0) => {
   return useQuery({
     queryKey: ["users", query, page],
-    queryFn: () => (query.trim() ? searchUsersApi(query, page) : getAllUsersApi(page)),
+    queryFn: () => (query.trim() ? searchUsersService(query, page) : getAllUsersService(page)),
   });
 };
 
 export const useBanUser = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => banUserApi(id),
+    mutationFn: (id: number) => banUserService(id),
     onSuccess: () => {
       toast.success("User banned successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["users"] }); 
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useUnbanUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => unbanUserService(id),
+    onSuccess: () => {
+      toast.success("User unbanned successfully");
+      queryClient.invalidateQueries({ queryKey: ["users"] }); 
     },
     onError: handleApiError,
   });
@@ -59,14 +62,48 @@ export const useBanUser = () => {
 
 export const useUpdateProfile = () => {
   const { update } = useSession();
-  return useMutation({
-    mutationFn: (data: UpdateProfileRequest) => updateProfileApi(data),
-    onSuccess: async (_, variables) => { 
+
+  return useMutation<UserResponse, unknown, UpdateProfileRequest>({
+    mutationFn: (data) => updateProfileService(data),
+    onSuccess: async (updatedUser) => {
       toast.success("Profile updated successfully");
       
       await update({
-        displayName: variables.displayName,
-        contactInfo: variables.contactInfo
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          displayName: updatedUser.displayName,
+          contactInfo: updatedUser.contactInfo ?? "",
+          role: updatedUser.role,
+          avatarUrl: updatedUser.avatarUrl ?? null,
+          avatarPublicId: updatedUser.avatarPublicId ?? null,
+          isLocked: updatedUser.isLocked,
+        },
+      });
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useUploadAvatar = () => {
+  const { update } = useSession();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadAvatarService(file),
+    onSuccess: async (updatedUser) => {
+      toast.success("Profile picture updated successfully");
+      
+      await update({
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          displayName: updatedUser.displayName,
+          contactInfo: updatedUser.contactInfo ?? "",
+          role: updatedUser.role,
+          avatarUrl: updatedUser.avatarUrl ?? null,
+          avatarPublicId: updatedUser.avatarPublicId ?? null,
+          isLocked: updatedUser.isLocked,
+        },
       });
     },
     onError: handleApiError,

@@ -4,6 +4,9 @@ export interface UserResponse {
   displayName: string;
   contactInfo?: string | null;
   role: "USER" | "ADMIN";
+  avatarUrl?: string | null;
+  avatarPublicId?: string | null;
+  isLocked?: boolean;
 }
 
 export interface AuthResponse {

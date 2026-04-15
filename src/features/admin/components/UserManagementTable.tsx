@@ -3,7 +3,7 @@
 import { useState } from "react";
 import AppTable, { TableColumn } from "@/components/AppTable";
 import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialog";
-import { useUsers, useBanUser } from "@/features/users/hooks/useUsers";
+import { useUsers, useBanUser, useUnbanUser } from "@/features/users/hooks/useUsers";
 import { UserResponse } from "@/features/auth/api/response/auth.response";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,33 +11,39 @@ import { cn } from "@/lib/utils";
 export function UserManagementTable() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
-  const [userToBan, setUserToBan] = useState<UserResponse | null>(null);
+  
+  // State to track which user is being acted upon
+  const [userToToggle, setUserToToggle] = useState<UserResponse | null>(null);
 
   const { data, isLoading } = useUsers(search, page);
   const { mutate: banUser, isPending: isBanning } = useBanUser();
+  const { mutate: unbanUser, isPending: isUnbanning } = useUnbanUser();
 
-  const handleConfirmBan = () => {
-    if (userToBan) {
-      banUser(Number(userToBan.id)); 
-      setUserToBan(null);
+  const handleConfirmAction = () => {
+    if (userToToggle) {
+      if (userToToggle.isLocked) {
+        unbanUser(Number(userToToggle.id));
+      } else {
+        banUser(Number(userToToggle.id)); 
+      }
+      setUserToToggle(null);
     }
   };
 
+  const isActionPending = isBanning || isUnbanning;
+
   const columns: TableColumn<UserResponse>[] = [
-    { 
-      key: "id", 
-      header: "ID", 
-      width: 80 
-    },
+    { key: "id", header: "ID", width: 80 },
     { 
       key: "displayName", 
       header: "Name",
-      render: (val) => <span className="font-medium text-gray-900">{val as string}</span>
+      render: (val, row) => (
+        <span className={cn("font-medium", row.isLocked ? "text-gray-400 line-through" : "text-gray-900")}>
+          {val as string}
+        </span>
+      )
     },
-    { 
-      key: "email", 
-      header: "Email" 
-    },
+    { key: "email", header: "Email" },
     { 
       key: "role", 
       header: "Role", 
@@ -55,12 +61,14 @@ export function UserManagementTable() {
       header: "Actions", 
       render: (_, row) => (
         <Button 
-          variant="destructive" 
+          variant={row.isLocked ? "outline" : "destructive"} 
           size="sm" 
-          disabled={row.role === "ADMIN" || (isBanning && userToBan?.id === row.id)} 
-          onClick={() => setUserToBan(row)}
+          disabled={row.role === "ADMIN" || (isActionPending && userToToggle?.id === row.id)} 
+          onClick={() => setUserToToggle(row)}
         >
-          {isBanning && userToBan?.id === row.id ? "Banning..." : "Ban"}
+          {isActionPending && userToToggle?.id === row.id 
+            ? "Processing..." 
+            : row.isLocked ? "Unban" : "Ban"}
         </Button>
       )
     }
@@ -78,13 +86,17 @@ export function UserManagementTable() {
       />
       
       <DeleteConfirmationDialog
-        open={!!userToBan}
-        onOpenChange={(open) => !open && setUserToBan(null)}
-        onConfirm={handleConfirmBan}
-        itemName={userToBan?.displayName}
-        title="Ban User Account"
-        description={`Are you sure you want to ban ${userToBan?.displayName}? This will revoke their session and lock the account.`}
-        confirmLabel="Ban User"
+        open={!!userToToggle}
+        onOpenChange={(open) => !open && setUserToToggle(null)}
+        onConfirm={handleConfirmAction}
+        itemName={userToToggle?.displayName}
+        title={userToToggle?.isLocked ? "Unban User Account" : "Ban User Account"}
+        description={
+          userToToggle?.isLocked 
+          ? `Are you sure you want to unban ${userToToggle?.displayName}? They will be able to log in again.`
+          : `Are you sure you want to ban ${userToToggle?.displayName}? This will revoke their session and lock the account.`
+        }
+        confirmLabel={userToToggle?.isLocked ? "Unban User" : "Ban User"}
       />
     </div>
   );

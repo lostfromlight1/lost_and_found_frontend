@@ -2,7 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
-import { signIn, signOut } from "next-auth/react";
+// FIXED: Added getSession to the imports
+import { signIn, signOut, getSession } from "next-auth/react";
 import { BaseErrorResponse } from "@/types/api.types";
 import {
   changePasswordService,
@@ -76,10 +77,18 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: async () => {
       try {
-        await logoutService();
+        // 1. Get current session to get the refresh token
+        const sessionData = await getSession();
+        
+        // 2. Revoke token on backend
+        if (sessionData?.refreshToken) {
+          await logoutService(sessionData.refreshToken);
+        }
       } catch (e) {
         console.warn("Backend logout failed, but proceeding to clear local session", e);
       }
+      
+      // 3. Clear NextAuth session locally
       await signOut({ redirect: false });
     },
     onSuccess: () => {

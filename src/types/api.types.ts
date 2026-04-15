@@ -3,7 +3,7 @@ export interface BaseResponse<T = void> {
   apiId: string;
   traceId: string;
   message: string;
-  data?: T; 
+  data: T; 
 }
 
 export interface BaseErrorResponse {
@@ -14,32 +14,13 @@ export interface BaseErrorResponse {
   path: string;
   apiId: string;
   traceId: string;
-  validationErrors?: Record<string, string>; 
-}
-
-export interface SortObject {
-  empty: boolean;
-  sorted: boolean;
-  unsorted: boolean;
-}
-
-export interface PageableObject {
-  offset: number;
-  sort: SortObject;
-  pageNumber: number;
-  pageSize: number;
-  paged: boolean;
-  unpaged: boolean;
+  validationErrors?: Record<string, string>;
 }
 
 export interface PaginatedResponse<T> {
   content: T[];
-  pageable: PageableObject;
-  last: boolean;
-  totalPages: number;
+  page: number;          
+  size: number;          
   totalElements: number;
-  first: boolean;
-  size: number;
-  number: number;
-  empty: boolean;
+  totalPages: number;   
 }

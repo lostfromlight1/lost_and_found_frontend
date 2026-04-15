@@ -23,8 +23,8 @@ export const registerService = async (data: RegisterRequest) => {
   return await registerApi(data);
 };
 
-export const logoutService = async () => {
-  return await logoutApi();
+export const logoutService = async (refreshToken: string) => {
+  return await logoutApi(refreshToken);
 };
 
 export const changePasswordService = async (data: ChangePasswordRequest) => {

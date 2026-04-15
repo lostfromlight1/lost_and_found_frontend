@@ -11,11 +11,16 @@ interface BackendAuthData {
   email: string;
   displayName: string;
   contactInfo: string;
-  role: string;
+  role: "USER" | "ADMIN";
+  avatarUrl?: string | null;
+  avatarPublicId?: string | null;
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  isLocked?: boolean;
 }
+
+type SessionUser = Omit<BackendAuthData, "accessToken" | "refreshToken" | "expiresIn">;
 
 let refreshPromise: Promise<JWT> | null = null;
 
@@ -30,8 +35,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-KEY": API_KEY, 
-          "Cookie": `app_refresh_token=${token.refreshToken}` 
+          "X-API-KEY": API_KEY,
         },
         body: JSON.stringify({ refreshToken: token.refreshToken })
       });
@@ -39,7 +43,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       const refreshedTokens = await response.json();
 
       if (!response.ok || !refreshedTokens.data) {
-        throw new Error("Failed to refresh token");
+        throw new Error("RefreshAccessTokenError");
       }
 
       const { accessToken, refreshToken, expiresIn } = refreshedTokens.data;
@@ -48,10 +52,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         ...token,
         accessToken: accessToken,
         refreshToken: refreshToken ?? token.refreshToken,
-        expiresAt: Date.now() + Number(expiresIn),
+        expiresAt: Date.now() + Number(expiresIn), 
       } as JWT;
-    } catch (error) {
-      console.log("Session expired or invalid. Forcing re-login.", error);
+    } catch {
       return {
         ...token,
         error: "RefreshAccessTokenError",
@@ -65,90 +68,58 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60,
-  },
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      httpOptions: {
-        timeout: 10000, 
-      },
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      httpOptions: { timeout: 10000 },
     }),
     CredentialsProvider({
       name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
+      credentials: { email: { type: "email" }, password: { type: "password" } },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Email and password are required");
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
+          body: JSON.stringify(credentials),
+        });
+        
+        const json = await res.json();
+        
+        if (res.ok && json.data) {
+          const { accessToken, refreshToken, expiresIn, user } = json.data;
+          return {
+            ...user,
+            id: Number(user.id),
+            accessToken,
+            refreshToken,
+            expiresIn: Number(expiresIn),
+          } as unknown as User;
         }
-
-        try {
-          const res = await fetch(`${API_URL}/auth/login`, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "X-API-KEY": API_KEY 
-            },
-            body: JSON.stringify({
-              email: credentials.email,
-              password: credentials.password,
-            }),
-          });
-
-          const json = await res.json();
-
-          if (res.ok && json.data) {
-            const { accessToken, refreshToken, expiresIn, user } = json.data;
-            return {
-              id: Number(user.id),
-              email: user.email,
-              displayName: user.displayName,
-              contactInfo: user.contactInfo || "", 
-              role: user.role,
-              accessToken,
-              refreshToken,
-              expiresIn: Number(expiresIn),
-            } as unknown as User; 
-          }
-          
-          throw new Error(json.message || "Invalid email or password");
-          
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            throw new Error(error.message);
-          }
-          throw new Error("Unable to connect to the server.");
-        }
+        throw new Error(json.message || "Invalid credentials");
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
       
+      // 1. Handle manual session updates (Profile changes / Avatar uploads)
       if (trigger === "update" && session) {
-        if (token.user) {
-          const tUser = token.user as { displayName?: string; contactInfo?: string };
-          tUser.displayName = session.displayName || tUser.displayName;
-          
-          if (session.contactInfo !== undefined) {
-            tUser.contactInfo = session.contactInfo;
-          }
-        }
+        token.user = { 
+          ...(token.user as SessionUser), 
+          ...(session.user || session) 
+        };
         return token;
       }
 
+      // 2. Google Login
       if (account?.provider === "google" && account.id_token) {
         try {
           const res = await fetch(`${API_URL}/auth/google`, {
             method: "POST",
             headers: { 
-              "Content-Type": "application/json",
+              "Content-Type": "application/json", 
               "X-API-KEY": API_KEY 
             },
             body: JSON.stringify({ idToken: account.id_token }),
@@ -169,6 +140,9 @@ export const authOptions: NextAuthOptions = {
                 displayName: backendUser.displayName,
                 contactInfo: backendUser.contactInfo || "",
                 role: backendUser.role,
+                avatarUrl: backendUser.avatarUrl,
+                avatarPublicId: backendUser.avatarPublicId,
+                isLocked: backendUser.isLocked,
               }
             } as JWT;
           } else {
@@ -179,38 +153,32 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // 3. Credentials Login
       if (user) {
-        const customUser = user as unknown as BackendAuthData; 
-        
+        const customUser = user as unknown as BackendAuthData;
         return {
           ...token,
           accessToken: customUser.accessToken,
           refreshToken: customUser.refreshToken,
           expiresAt: Date.now() + Number(customUser.expiresIn),
-          user: {
-            id: customUser.id,
-            email: customUser.email,
-            displayName: customUser.displayName,
-            contactInfo: customUser.contactInfo,
-            role: customUser.role,
-          },
-        } as JWT; 
+          user: { ...customUser },
+        } as JWT;
       }
 
-      if (Date.now() < (token.expiresAt as number) - 10000) {
+      // 4. Silent Refresh Logic
+      if (Date.now() < (token.expiresAt as number) - 60000) {
         return token;
       }
 
       return refreshAccessToken(token);
     },
     async session({ session, token }) {
-      session.user = token.user as User;
+      session.user = { ...session.user, ...(token.user as SessionUser) };
       session.accessToken = token.accessToken as string;
+      session.refreshToken = token.refreshToken as string;
       session.error = token.error as "RefreshAccessTokenError" | undefined;
       return session;
     },
   },
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
 };

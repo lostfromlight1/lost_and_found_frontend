@@ -4,13 +4,17 @@ import { DefaultJWT } from "next-auth/jwt";
 declare module "next-auth" {
   interface Session {
     accessToken: string;
+    refreshToken: string; 
     error?: "RefreshAccessTokenError";
+
     user: {
       id: number;
       email: string;
       displayName: string;
       contactInfo: string;
       role: "USER" | "ADMIN";
+      avatarUrl?: string | null;
+      avatarPublicId?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -20,6 +24,9 @@ declare module "next-auth" {
     displayName: string;
     contactInfo: string;
     role: "USER" | "ADMIN";
+    avatarUrl?: string | null;
+    avatarPublicId?: string | null;
+
     accessToken: string;
     refreshToken: string;
     expiresIn: number;
@@ -32,12 +39,15 @@ declare module "next-auth/jwt" {
     refreshToken: string;
     expiresAt: number;
     error?: "RefreshAccessTokenError";
+
     user: {
       id: number;
       email: string;
       displayName: string;
       contactInfo: string;
       role: "USER" | "ADMIN";
+      avatarUrl?: string | null;
+      avatarPublicId?: string | null;
     };
   }
 }

@@ -10,12 +10,12 @@ import { AuthResponse, UserResponse } from "./response/auth.response";
 
 export const loginApi = async (data: LoginRequest): Promise<AuthResponse> => {
   const response = await apiClient.post<BaseResponse<AuthResponse>>("/auth/login", data);
-  return response.data as unknown as AuthResponse; 
+  return response as unknown as AuthResponse; 
 };
 
 export const registerApi = async (data: RegisterRequest): Promise<UserResponse> => {
   const response = await apiClient.post<BaseResponse<UserResponse>>("/auth/register", data);
-  return response.data as unknown as UserResponse;
+  return response as unknown as UserResponse;
 };
 
 export const changePasswordApi = async (data: ChangePasswordRequest): Promise<void> => {
@@ -44,6 +44,6 @@ export const resendVerificationApi = async (email: string): Promise<void> => {
   });
 };
 
-export const logoutApi = async (): Promise<void> => {
-  await apiClient.post<BaseResponse<void>>("/auth/logout");
+export const logoutApi = async (refreshToken: string): Promise<void> => {
+  await apiClient.post<BaseResponse<void>>("/auth/logout", { refreshToken });
 };
