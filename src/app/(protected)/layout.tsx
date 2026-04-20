@@ -21,7 +21,7 @@ export default async function ProtectedLayout({
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      
+
       {/* ================= SIDEBAR ================= */}
       <aside className="w-64 bg-white border-r flex-col hidden md:flex">
         <div className="h-16 flex items-center px-6 border-b">
@@ -31,16 +31,16 @@ export default async function ProtectedLayout({
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <Link 
-            href="/dashboard" 
+          <Link
+            href="/dashboard"
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium"
           >
             <SquaresFourIcon size={20} />
             Dashboard
           </Link>
 
-          <Link 
-            href="/settings" 
+          <Link
+            href="/settings"
             className="flex items-center gap-3 px-3 py-2.5 rounded-md text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium"
           >
             <GearIcon size={20} />
@@ -53,9 +53,9 @@ export default async function ProtectedLayout({
               <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                 Management
               </p>
-              <Link 
-                href="/admin" 
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-colors font-medium"
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-blue-600 hover:bg-red-50 transition-colors font-medium"
               >
                 <ShieldCheckIcon size={20} />
                 Admin Panel
@@ -71,23 +71,23 @@ export default async function ProtectedLayout({
 
       {/* ================= MAIN CONTENT ================= */}
       <div className="flex-1 flex flex-col min-w-0">
-        
+
         {/* TOP HEADER */}
         <header className="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm z-10">
           <div className="font-medium text-slate-800">
             {/* Optional Breadcrumbs or Title could go here */}
           </div>
-          
+
           <div className="flex items-center gap-4 text-sm">
             <span className="text-slate-500">
               Logged in as <span className="font-semibold text-slate-900">{user?.displayName || user?.email}</span>
             </span>
-            
+
             {/* Renders the Cloudinary Avatar if available, otherwise falls back to the initial */}
             {user?.avatarUrl ? (
-              <img 
-                src={user.avatarUrl} 
-                alt={user.displayName || "User avatar"} 
+              <img
+                src={user.avatarUrl}
+                alt={user.displayName || "User avatar"}
                 className="h-8 w-8 rounded-full object-cover border border-slate-200"
               />
             ) : (
@@ -100,11 +100,11 @@ export default async function ProtectedLayout({
 
         {/* PAGE RENDER AREA */}
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-7xl"> 
+          <div className="max-w-7xl">
             {children}
           </div>
-        </main>      
-        </div>
+        </main>
+      </div>
     </div>
   );
 }
