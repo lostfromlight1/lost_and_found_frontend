@@ -59,38 +59,55 @@ export default function SelectForm<TFieldValues extends FieldValues>({
       name={name}
       control={control}
       rules={activeRules}
-      render={({ field }) => (
-        <FieldItem className={className}>
-          {label ? (
-            <FieldLabel>
-              {label}
-              {required && <span className="ml-1 text-destructive">*</span>}
-            </FieldLabel>
-          ) : null}
-          <Select
-            disabled={disabled}
-            onValueChange={field.onChange}
-            value={field.value !== undefined && field.value !== null ? String(field.value) : undefined}
-            defaultValue={field.value !== undefined && field.value !== null ? String(field.value) : undefined}
-          >
-            <FieldControl>
-              <SelectTrigger className={triggerClassName ?? "w-full"}>
-                <SelectValue placeholder={placeholder} />
-              </SelectTrigger>
-            </FieldControl>
-            <SelectContent className="rounded-md">
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>          {description ? (
-            <FieldDescription>{description}</FieldDescription>
-          ) : null}
-          <FieldMessage />
-        </FieldItem>
-      )}
+      render={({ field }) => {
+        // Ensure value is ALWAYS a string, never undefined. 
+        // "" keeps it strictly controlled on the first render, avoiding the React warning.
+        // Since no option has value="", it will naturally show the placeholder.
+        const safeValue = field.value !== undefined && field.value !== null 
+            ? String(field.value) 
+            : "";
+
+        // FIXED: Manually find the matching option to bypass Radix UI's display bug with dynamic options
+        const selectedOption = options.find((opt) => opt.value === safeValue);
+
+        return (
+          <FieldItem className={className}>
+            {label ? (
+              <FieldLabel>
+                {label}
+                {required && <span className="ml-1 text-destructive">*</span>}
+              </FieldLabel>
+            ) : null}
+            
+            <Select
+              disabled={disabled}
+              onValueChange={field.onChange}
+              value={safeValue}
+            >
+              <FieldControl>
+                <SelectTrigger className={triggerClassName ?? "w-full"}>
+                  {/* Pass the label directly as children so it doesn't default to the raw ID */}
+                  <SelectValue placeholder={placeholder}>
+                    {selectedOption ? selectedOption.label : undefined}
+                  </SelectValue>
+                </SelectTrigger>
+              </FieldControl>
+              <SelectContent className="rounded-md">
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {description ? (
+              <FieldDescription>{description}</FieldDescription>
+            ) : null}
+            <FieldMessage />
+          </FieldItem>
+        );
+      }}
     />
   )
 }

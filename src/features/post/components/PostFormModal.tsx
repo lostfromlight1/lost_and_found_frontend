@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { X, Upload, ImageIcon } from "lucide-react"; 
+import { X, Upload, ImageIcon, GripHorizontal } from "lucide-react"; 
 import Image from "next/image"; 
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import DatePickerForm from "@/components/form/DatePickerForm";
 import { api } from "@/lib/api/axios";
 import { useCreatePost, useUpdatePost } from "@/features/post/hooks/usePosts";
 import { useCategories } from "@/features/categories/hooks/useCategories";
-import { PostResponseDto, } from "@/features/post/api/response/posts.response";
+import { PostResponseDto } from "@/features/post/api/response/posts.response";
 
 interface ImageUploadResponse {
   url: string;
@@ -30,7 +30,8 @@ const postSchema = z.object({
   type: z.enum(["LOST", "FOUND"]),
   status: z.enum(["OPEN", "CLOSE"]), 
   categoryId: z.string().min(1, "Category is required"), 
-  location: z.string().min(1, "Location is required"),
+  city: z.string().min(1, "City is required"),
+  locationDetails: z.string().trim().min(1, "Location details are required"),
   lostFoundDate: z.date(),
   contactInfo: z.string().trim().min(1, "Contact info is required"),
   reward: z.coerce.number().optional().default(0),
@@ -70,6 +71,10 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Drag and drop refs
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
+
   const { mutate: createPost, isPending: isCreating } = useCreatePost();
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
   const { data: categoriesData, isLoading: isLoadingCategories } = useCategories();
@@ -90,6 +95,13 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
     value: String(cat.id),
   }));
 
+  if (isUpdate && postToEdit && categoryOptions.length === 0) {
+    categoryOptions.push({
+      label: postToEdit.category.name,
+      value: String(postToEdit.category.id)
+    });
+  }
+
   const form = useForm<PostFormInput, unknown, PostFormOutput>({
     resolver: zodResolver(postSchema),
     defaultValues: {
@@ -98,7 +110,8 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
       type: "LOST",
       status: "OPEN",
       categoryId: "", 
-      location: "",
+      city: "",
+      locationDetails: "",
       lostFoundDate: new Date(),
       contactInfo: "",
       reward: 0,
@@ -110,17 +123,20 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
 
   useEffect(() => {
     if (open && postToEdit) {
+      const sortedImages = [...postToEdit.images].sort((a, b) => a.sortOrder - b.sortOrder);
+
       form.reset({
         title: postToEdit.title,
         description: postToEdit.description,
         type: postToEdit.type,
         status: String(postToEdit.status) === "CLOSED" ? "CLOSE" : "OPEN", 
         categoryId: String(postToEdit.category.id), 
-        location: postToEdit.location,
+        city: postToEdit.city,
+        locationDetails: postToEdit.locationDetails,
         lostFoundDate: new Date(postToEdit.lostFoundDate),
         contactInfo: postToEdit.contactInfo,
         reward: postToEdit.reward ?? 0,
-        images: postToEdit.images.map(img => ({
+        images: sortedImages.map(img => ({
           url: img.url,
           publicId: (img as { publicId?: string }).publicId || String(img.id), 
           sortOrder: img.sortOrder,
@@ -133,7 +149,8 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         type: "LOST",
         status: "OPEN",
         categoryId: "", 
-        location: "",
+        city: "",
+        locationDetails: "",
         lostFoundDate: new Date(),
         contactInfo: "",
         reward: 0,
@@ -188,6 +205,21 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
     form.setValue("images", updatedImages, { shouldValidate: true, shouldDirty: true });
   };
 
+  const handleSort = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    
+    const _images = [...currentImages];
+    const draggedItemContent = _images.splice(dragItem.current, 1)[0];
+    
+    _images.splice(dragOverItem.current, 0, draggedItemContent);
+    
+    const updatedImages = _images.map((img, idx) => ({ ...img, sortOrder: idx }));
+    
+    dragItem.current = null;
+    dragOverItem.current = null;
+    form.setValue("images", updatedImages, { shouldValidate: true, shouldDirty: true });
+  };
+
   const onSubmit = (data: PostFormOutput) => {
     const formattedData = {
       ...data,
@@ -235,20 +267,28 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
             
             <SelectForm
               control={form.control}
-              name="location"
-              label="Location (City)"
-              options={MYANMAR_CITIES}
-              required
-            />
-
-            <SelectForm
-              control={form.control}
               name="categoryId"
               label="Category"
               options={categoryOptions}
               disabled={isLoadingCategories}
               placeholder={isLoadingCategories ? "Loading categories..." : "Select category"}
               required
+            />
+
+            <SelectForm
+              control={form.control}
+              name="city"
+              label="City"
+              options={MYANMAR_CITIES}
+              required
+            />
+
+            <InputForm 
+              control={form.control} 
+              name="locationDetails" 
+              label="Location Details" 
+              placeholder="e.g. Near main gate, Bus stop..."
+              required 
             />
 
             <DatePickerForm 
@@ -301,7 +341,15 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
             {currentImages.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
                 {currentImages.map((img, index) => (
-                  <div key={img.publicId} className="relative group aspect-square rounded-md overflow-hidden border bg-slate-50 flex items-center justify-center">
+                  <div 
+                    key={img.publicId} 
+                    className="relative group aspect-square rounded-md overflow-hidden border bg-slate-50 flex items-center justify-center cursor-grab active:cursor-grabbing"
+                    draggable 
+                    onDragStart={() => (dragItem.current = index)}
+                    onDragEnter={() => (dragOverItem.current = index)}
+                    onDragEnd={handleSort}
+                    onDragOver={(e) => e.preventDefault()}
+                  >
                     <Image 
                       src={img.url} 
                       alt={`Upload ${index}`} 
@@ -310,19 +358,30 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
                       sizes="(max-width: 768px) 50vw, 25vw"
                     />
                     
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="icon"
+                        className="h-8 w-8 rounded-full cursor-grab"
+                      >
+                        <GripHorizontal size={14} />
+                      </Button>
                       <Button
                         type="button"
                         variant="destructive"
                         size="icon"
                         className="h-8 w-8 rounded-full"
-                        onClick={() => removeImage(index)}
+                        onClick={(e) => {
+                          e.stopPropagation(); 
+                          removeImage(index);
+                        }}
                       >
                         <X size={14} />
                       </Button>
                     </div>
                     
-                    <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 pointer-events-none">
                       {index + 1}
                     </div>
                   </div>

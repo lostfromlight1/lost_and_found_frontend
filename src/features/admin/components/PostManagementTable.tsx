@@ -86,7 +86,21 @@ export default function PostManagementTable() {
         </span>
       )
     },
-    { key: "location", header: "Location", className: "text-sm text-gray-600" },
+    { 
+      key: "city", 
+      header: "Location", 
+      render: (_, row) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-gray-900">{row.city}</span>
+          <span 
+            className="text-xs text-slate-500 truncate max-w-37.5" 
+            title={row.locationDetails}
+          >
+            {row.locationDetails}
+          </span>
+        </div>
+      )
+    },
     { key: "lostFoundDate", header: "Date", className: "text-sm text-gray-600" },
     {
       key: "actions",
