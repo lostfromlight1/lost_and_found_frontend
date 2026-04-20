@@ -6,55 +6,157 @@ import {
   MapPinIcon,
   ClockIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import { title } from "process";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
+  const stats = [
+    {
+      title: "My Reports",
+      value: 0,
+      desc: "Active lost/found items",
+      icon: PackageIcon,
+      color: "from-blue-500 to-indigo-500",
+    },
+    {
+      title: "Nearby Items",
+      value: 12,
+      desc: "Items found in your area",
+      icon: MapPinIcon,
+      color: "from-orange-500 to-amber-500",
+    },
+    {
+      title: "Resolved",
+      value: 5,
+      desc: "Items returned safely",
+      icon: ClockIcon,
+      color: "from-green-500 to-emerald-500",
+    },
+
+    {
+      title: "Total Users",
+      value: 1200,
+      desc: "Community members",
+      icon: PackageIcon,
+      color: "from-purple-500 to-pink-500",
+    },
+
+    {
+      title: "Total Items",
+      value: 3500,
+      desc: "All reported items",
+      icon: MapPinIcon,
+      color: "from-yellow-500 to-red-500",
+    },
+
+    {
+      title: "Resolved Cases",
+      value: 2800,
+      desc: "Items successfully returned",
+      icon: ClockIcon,
+      color: "from-green-500 to-teal-500",
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      <DashboardHeader 
-        title="My Dashboard" 
-        description={`Welcome back, ${session?.user?.displayName}`}
-      />
+      <DashboardHeader
+        title="My Dashboard"
+        description={`Welcome back, ${session?.user?.displayName || "User"} `} />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat, i) => {
+          const Icon = stat.icon;
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="p-6 bg-white border rounded-xl shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-              <PackageIcon size={24} weight="fill" />
-            </div>
-            <h3 className="font-semibold text-lg">My Reports</h3>
-          </div>
-          <p className="text-3xl font-bold">0</p>
-          <p className="text-sm text-muted-foreground mt-1">Active lost/found items</p>
-        </div>
+          return (
+            <div
+              key={i}
+              className="relative overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-lg hover:-translate-y-1"
+            >
+              {/* Gradient Glow */}
+              <div
+                className={`absolute inset-0 opacity-5 bg-gradient-to-br ${stat.color}`}
+              />
 
-        <div className="p-6 bg-white border rounded-xl shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-              <MapPinIcon size={24} weight="fill" />
-            </div>
-            <h3 className="font-semibold text-lg">Nearby Items</h3>
-          </div>
-          <p className="text-3xl font-bold">12</p>
-          <p className="text-sm text-muted-foreground mt-1">Items found in your area</p>
-        </div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div
+                    className={`p-3 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-md`}
+                  >
+                    <Icon size={22} weight="fill" />
+                  </div>
 
-        <div className="p-6 bg-white border rounded-xl shadow-sm">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 bg-green-100 text-green-600 rounded-lg">
-              <ClockIcon size={24} weight="fill" />
+                  <span className="text-xs text-muted-foreground">
+                    Updated now
+                  </span>
+                </div>
+
+                <h3 className="text-sm text-muted-foreground">
+                  {stat.title}
+                </h3>
+
+                <p className="text-4xl font-bold mt-1 tracking-tight">
+                  {stat.value}
+                </p>
+
+                <p className="text-sm text-muted-foreground mt-2">
+                  {stat.desc}
+                </p>
+              </div>
             </div>
-            <h3 className="font-semibold text-lg">Resolved</h3>
-          </div>
-          <p className="text-3xl font-bold">5</p>
-          <p className="text-sm text-muted-foreground mt-1">Items returned safely</p>
-        </div>
+          );
+        })}
       </div>
-      
-      {/* Feed placeholder */}
-      <div className="bg-white border rounded-xl p-12 text-center">
-        <p className="text-slate-400">Your recent activity will appear here.</p>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+
+        {/* Recent Activity */}
+        <div className="lg:col-span-2 bg-white border rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition">
+              <div>
+                <p className="font-medium">You reported a lost wallet</p>
+                <p className="text-sm text-muted-foreground">2 hours ago</p>
+              </div>
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md">
+                Pending
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition">
+              <div>
+                <p className="font-medium">Phone returned successfully</p>
+                <p className="text-sm text-muted-foreground">Yesterday</p>
+              </div>
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md">
+                Resolved
+              </span>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground pt-4">
+              No more activity
+            </div>
+          </div>
+        </div>
+        <div className="bg-white border rounded-2xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+
+          <div className="space-y-3">
+            <button className="w-full p-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
+              Report Lost Item
+            </button>
+
+            <button className="w-full p-3 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition">
+              Report Found Item
+            </button>
+
+            <button className="w-full p-3 rounded-lg bg-slate-100 hover:bg-slate-200 transition">
+              View All Items
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
