@@ -8,7 +8,7 @@ export function SignOutButton() {
   return (
     <Button
       variant="outline"
-      className="w-full flex justify-start gap-2"
+      className="w-full flex justify-start gap-2 cursor-pointer"
       onClick={() => signOut({ callbackUrl: "/login" })}
     >
       <SignOutIcon size={18} />
