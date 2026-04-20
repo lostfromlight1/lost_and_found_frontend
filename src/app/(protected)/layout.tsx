@@ -4,6 +4,7 @@ import { authOptions } from "@/features/auth/config/auth-options";
 import Link from "next/link";
 import { SignOutButton } from "@/features/auth/components/SignOutButton";
 import { SquaresFourIcon, GearIcon, ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr";
+import { Navbar } from "@/components/navbar/Navbar";
 
 export default async function ProtectedLayout({
   children,
@@ -55,7 +56,7 @@ export default async function ProtectedLayout({
               </p>
               <Link 
                 href="/admin" 
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-colors font-medium"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-blue-600 hover:bg-red-50 transition-colors font-medium"
               >
                 <ShieldCheckIcon size={20} />
                 Admin Panel
@@ -64,47 +65,22 @@ export default async function ProtectedLayout({
           )}
         </nav>
 
-        <div className="p-4 border-t border-slate-100">
-          <SignOutButton />
-        </div>
+       
       </aside>
 
       {/* ================= MAIN CONTENT ================= */}
+{/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* TOP HEADER */}
-        <header className="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm z-10">
-          <div className="font-medium text-slate-800">
-            {/* Optional Breadcrumbs or Title could go here */}
-          </div>
-          
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-slate-500">
-              Logged in as <span className="font-semibold text-slate-900">{user?.displayName || user?.email}</span>
-            </span>
-            
-            {/* Renders the Cloudinary Avatar if available, otherwise falls back to the initial */}
-            {user?.avatarUrl ? (
-              <img 
-                src={user.avatarUrl} 
-                alt={user.displayName || "User avatar"} 
-                className="h-8 w-8 rounded-full object-cover border border-slate-200"
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                {user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"}
-              </div>
-            )}
-          </div>
-        </header>
+        <Navbar user={user} />
 
-        {/* PAGE RENDER AREA */}
-        <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-7xl"> 
+        <main className="flex-1 p-6 md:p-10">
+          <div className="max-w-7xl mx-auto"> 
             {children}
           </div>
         </main>      
-        </div>
+      </div>
     </div>
+
+
   );
 }
