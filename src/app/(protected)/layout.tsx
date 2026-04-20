@@ -4,7 +4,6 @@ import { authOptions } from "@/features/auth/config/auth-options";
 import Link from "next/link";
 import { SignOutButton } from "@/features/auth/components/SignOutButton";
 import { SquaresFourIcon, GearIcon, ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr";
-import { Navbar } from "@/components/navbar/Navbar";
 
 export default async function ProtectedLayout({
   children,
@@ -54,14 +53,9 @@ export default async function ProtectedLayout({
               <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                 Management
               </p>
-<<<<<<< HEAD
               <Link
                 href="/admin"
-=======
-              <Link 
-                href="/admin" 
->>>>>>> 91f653255abafd470433bb0d40822faaad53789b
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-blue-600 hover:bg-red-50 transition-colors font-medium"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-colors font-medium"
               >
                 <ShieldCheckIcon size={20} />
                 Admin Panel
@@ -70,13 +64,13 @@ export default async function ProtectedLayout({
           )}
         </nav>
 
-       
+        <div className="p-4 border-t border-slate-100">
+          <SignOutButton />
+        </div>
       </aside>
 
       {/* ================= MAIN CONTENT ================= */}
-{/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-w-0">
-<<<<<<< HEAD
 
         {/* TOP HEADER */}
         <header className="h-16 bg-white border-b flex items-center justify-between px-8 shadow-sm z-10">
@@ -110,18 +104,7 @@ export default async function ProtectedLayout({
             {children}
           </div>
         </main>
-=======
-        <Navbar user={user} />
-
-        <main className="flex-1 p-6 md:p-10">
-          <div className="max-w-7xl mx-auto"> 
-            {children}
-          </div>
-        </main>      
->>>>>>> 91f653255abafd470433bb0d40822faaad53789b
       </div>
     </div>
-
-
   );
 }
