@@ -100,12 +100,11 @@ export default async function ProtectedLayout({
 
         {/* PAGE RENDER AREA */}
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-6xl mx-auto">
+          <div className="max-w-7xl"> 
             {children}
           </div>
-        </main>
-      </div>
-
+        </main>      
+        </div>
     </div>
   );
 }

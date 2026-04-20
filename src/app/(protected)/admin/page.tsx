@@ -14,7 +14,6 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <ShieldCheckIcon size={32} className="text-destructive" weight="fill" />
         <DashboardHeader
           title="Admin Panel"
           description="Manage system users, categories, posts, and moderation actions."

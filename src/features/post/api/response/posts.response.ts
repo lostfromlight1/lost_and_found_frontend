@@ -13,6 +13,7 @@ export interface UserSummaryDto {
   id: number;
   displayName: string;
   avatarUrl?: string;
+  email: string; 
 }
 
 export interface PostResponseDto {
@@ -20,11 +21,11 @@ export interface PostResponseDto {
   title: string;
   description: string;
   type: "LOST" | "FOUND";
-  status: "OPEN" | "CLOSE";
+  status: "OPEN" | "CLOSE"; 
   location: string;
   lostFoundDate: string;
   contactInfo: string;
-  reward: number;
+  reward: number | null; 
   user: UserSummaryDto;
   category: CategoryDto;
   images: ImageDto[];

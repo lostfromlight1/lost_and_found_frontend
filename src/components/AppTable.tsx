@@ -218,7 +218,8 @@ export default function AppTable<T extends object>({
                     return (
                       <TableCell
                         key={`${rowIndex}-${column.key || colIndex}`}
-                        className={column.cellClassName}
+                        // FIXED: Added `column.className` to the cell so header and cell alignments perfectly match!
+                        className={cn(column.className, column.cellClassName)}
                       >
                         {column.render
                           ? column.render(value, row)

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { X, Upload, ImageIcon } from "lucide-react"; 
-import Image from "next/image"; // Import Next.js Image component
+import Image from "next/image"; 
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import FormModal from "@/components/model/FormModal";
@@ -17,9 +17,8 @@ import DatePickerForm from "@/components/form/DatePickerForm";
 import { api } from "@/lib/api/axios";
 import { useCreatePost, useUpdatePost } from "@/features/post/hooks/usePosts";
 import { useCategories } from "@/features/categories/hooks/useCategories";
-import { PostResponseDto } from "@/features/post/api/response/posts.response";
+import { PostResponseDto, } from "@/features/post/api/response/posts.response";
 
-// Define the interface for the image upload response
 interface ImageUploadResponse {
   url: string;
   publicId: string;
@@ -29,8 +28,8 @@ const postSchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().trim().min(1, "Description is required"),
   type: z.enum(["LOST", "FOUND"]),
-  status: z.enum(["OPEN", "CLOSE"]),
-  categoryId: z.coerce.number().min(1, "Category is required"),
+  status: z.enum(["OPEN", "CLOSE"]), 
+  categoryId: z.string().min(1, "Category is required"), 
   location: z.string().min(1, "Location is required"),
   lostFoundDate: z.date(),
   contactInfo: z.string().trim().min(1, "Contact info is required"),
@@ -77,7 +76,6 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
   
   const isSubmitting = isCreating || isUpdating;
 
-  // Replaced 'any' with a structured unknown cast
   const safeCategoriesData = categoriesData as unknown as { 
     content?: CategoryItem[]; 
     data?: CategoryItem[] 
@@ -99,7 +97,7 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
       description: "",
       type: "LOST",
       status: "OPEN",
-      categoryId: 0,
+      categoryId: "", 
       location: "",
       lostFoundDate: new Date(),
       contactInfo: "",
@@ -116,15 +114,14 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         title: postToEdit.title,
         description: postToEdit.description,
         type: postToEdit.type,
-        status: postToEdit.status,
-        categoryId: postToEdit.category.id,
+        status: String(postToEdit.status) === "CLOSED" ? "CLOSE" : "OPEN", 
+        categoryId: String(postToEdit.category.id), 
         location: postToEdit.location,
         lostFoundDate: new Date(postToEdit.lostFoundDate),
         contactInfo: postToEdit.contactInfo,
-        reward: postToEdit.reward,
+        reward: postToEdit.reward ?? 0,
         images: postToEdit.images.map(img => ({
           url: img.url,
-          // Replaced 'any' with explicit type checking or optional chaining
           publicId: (img as { publicId?: string }).publicId || String(img.id), 
           sortOrder: img.sortOrder,
         })),
@@ -135,7 +132,7 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         description: "",
         type: "LOST",
         status: "OPEN",
-        categoryId: 0,
+        categoryId: "", 
         location: "",
         lostFoundDate: new Date(),
         contactInfo: "",
@@ -159,7 +156,6 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
       const formData = new FormData();
       formData.append("file", file);
 
-      // Explicitly typed the API call to resolve "Property does not exist" errors
       const uploadedData = await api.post<never, ImageUploadResponse>("/images/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -195,12 +191,13 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
   const onSubmit = (data: PostFormOutput) => {
     const formattedData = {
       ...data,
+      categoryId: Number(data.categoryId), 
       lostFoundDate: data.lostFoundDate.toISOString().split("T")[0],
     };
 
     if (isUpdate && postToEdit) {
       updatePost(
-        { id: postToEdit.id, data: formattedData },
+        { id: postToEdit.id, data: formattedData }, 
         { onSuccess: () => onOpenChange(false) }
       );
     } else {
@@ -270,7 +267,7 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
                 label="Status"
                 options={[
                   { label: "Open", value: "OPEN" },
-                  { label: "Close", value: "CLOSE" },
+                  { label: "Closed", value: "CLOSE" }, 
                 ]}
               />
             )}
@@ -305,7 +302,6 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-4">
                 {currentImages.map((img, index) => (
                   <div key={img.publicId} className="relative group aspect-square rounded-md overflow-hidden border bg-slate-50 flex items-center justify-center">
-                    {/* Fixed: Replaced <img> with Next.js <Image /> component */}
                     <Image 
                       src={img.url} 
                       alt={`Upload ${index}`} 
