@@ -1,6 +1,6 @@
 "use client";
 
-import { BellIcon, SignOutIcon } from "@phosphor-icons/react";
+import { BellIcon } from "@phosphor-icons/react";
 import { SignOutButton } from "@/features/auth/components/SignOutButton";
 
 interface NavbarProps {
@@ -8,10 +8,11 @@ interface NavbarProps {
     displayName?: string | null;
     email?: string | null;
     avatarUrl?: string | null;
-  };
+  } | null; // Added null check
 }
 
-export function Navbar({ user }: NavbarProps) {
+// Changed to "export default" to match your Layout import
+export default function Navbar({ user }: NavbarProps) {
   const userInitial =
     user?.displayName?.charAt(0).toUpperCase() ||
     user?.email?.charAt(0).toUpperCase() ||
@@ -19,7 +20,7 @@ export function Navbar({ user }: NavbarProps) {
 
   return (
     <header className="h-16 bg-white border-b flex items-center justify-between px-6 shadow-sm sticky top-0 z-30">
-      {/* Left side: Breadcrumbs or Search (Empty for now as per your design) */}
+      {/* Left side: Breadcrumbs */}
       <div className="hidden md:block">
         <h2 className="text-sm font-medium text-slate-500">Overview</h2>
       </div>
@@ -57,8 +58,8 @@ export function Navbar({ user }: NavbarProps) {
           )}
         </div>
 
-        {/* Integrated Logout (Using your existing SignOutButton logic) */}
-        <div className="relative z-10 ml-2 cursor-pointer">
+        {/* SignOut Section */}
+        <div className="relative z-10 ml-2">
           <SignOutButton />
         </div>
       </div>

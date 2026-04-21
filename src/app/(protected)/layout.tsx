@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/features/auth/config/auth-options";
-import Navbar from "@/components/layout/Navbar";
+import Navbar from "@/components/navbar/Navbar"; // This works now with default export
 import LeftSidebar from "@/components/layout/LeftSidebar";
 import RightSidebar from "@/components/layout/RightSidebar";
 
@@ -16,26 +16,22 @@ export default async function ProtectedLayout({
     redirect("/login");
   }
 
-  // Extract user for easier access
-  const user = session.user;
+  // Cast or pass the user object safely
+  const user = session.user as any; 
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-100/50">
-      {/* Top Navigation */}
       <Navbar user={user} />
       
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar with Role-based access logic is now inside this component */}
-        <LeftSidebar userRole={user?.role} />
+        <LeftSidebar userRole={user?.role}/>
         
-        {/* Main scrollable feed area */}
         <main className="flex-1 overflow-y-auto scroll-smooth">
           <div className="max-w-3xl mx-auto w-full p-4 md:p-6 lg:p-8"> 
             {children}
           </div>
         </main>
         
-        {/* Right side for extra info/ads/trending */}
         <RightSidebar />
       </div>
     </div>

@@ -50,16 +50,14 @@ export default function LeftSidebar({ userRole }: LeftSidebarProps) {
                 pathname.startsWith("/admin") ? "bg-red-100 text-red-700" : "text-red-600 hover:bg-red-50"
               )}
             >
-              <ShieldCheckIcon size={20} weight={pathname.startsWith("/admin") ? "fill" : "regular"} />
+              <ShieldCheckIcon size={20} weight={pathname.startsWith("/admin") ? "fill" : "regular"}  />
               Admin Panel
             </Link>
           </div>
         )}
       </nav>
 
-      <div className="p-4 border-t border-slate-100">
-        <SignOutButton />
-      </div>
+     
     </aside>
   );
 }
