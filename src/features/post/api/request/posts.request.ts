@@ -9,7 +9,8 @@ export interface CreatePostRequest {
   description: string;
   type: "LOST" | "FOUND";
   categoryId: number;
-  location: string; 
+  city: string; 
+  locationDetails: string; 
   lostFoundDate: string; 
   contactInfo: string;
   reward?: number; 
@@ -25,5 +26,5 @@ export interface PostFilters {
   size?: number;
   type?: "LOST" | "FOUND";
   categoryId?: number;
-  location?: string;
+  city?: string;
 }

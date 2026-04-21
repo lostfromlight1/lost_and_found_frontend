@@ -22,7 +22,8 @@ export interface PostResponseDto {
   description: string;
   type: "LOST" | "FOUND";
   status: "OPEN" | "CLOSE"; 
-  location: string;
+  city: string;
+  locationDetails: string;
   lostFoundDate: string;
   contactInfo: string;
   reward: number | null; 

@@ -1,12 +1,15 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/features/auth/config/auth-options";
 import { DashboardHeader } from "@/features/users/components/DashboardHeader";
+
 import {
   PackageIcon,
   MapPinIcon,
   ClockIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { title } from "process";
+
+import PostFeed from "@/features/post/components/PostFeed";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -60,6 +63,7 @@ export default async function DashboardPage() {
   ];
 
   return (
+
     <div className="space-y-8">
       <DashboardHeader
         title="My Dashboard"
@@ -158,6 +162,16 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+    <div className="space-y-4">
+      <DashboardHeader 
+        title="My Dashboard" 
+        description={`Welcome back, ${session?.user?.displayName}`}
+      />
+
+      <main className="w-full">
+        {/* Main Feed Component replaces the hardcoded cards and placeholder */}
+        <PostFeed />
+      </main>
     </div>
   );
 }
