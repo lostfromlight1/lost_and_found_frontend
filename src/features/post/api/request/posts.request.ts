@@ -11,6 +11,8 @@ export interface CreatePostRequest {
   categoryId: number;
   city: string; 
   locationDetails: string; 
+  latitude: number;  
+  longitude: number; 
   lostFoundDate: string; 
   contactInfo: string;
   reward?: number; 

@@ -9,6 +9,7 @@ import { usePosts } from "../hooks/usePosts";
 import { useCategories } from "@/features/categories/hooks/useCategories";
 import PostCard from "./PostCard";
 import PostFormModal from "./PostFormModal";
+import { useDebounce } from "use-debounce";
 
 const MYANMAR_CITIES = [
   { label: "Yangon", value: "YANGON" }, { label: "Mandalay", value: "MANDALAY" },
@@ -35,19 +36,22 @@ export default function PostFeed() {
   const [categoryId, setCategoryId] = useState<string>("ALL");
   const [locationDetails, setLocationDetails] = useState("");
 
+  const [debouncedLocation] = useDebounce(locationDetails, 500);
+
   const { data: categoriesData } = useCategories();
   const safeCategoriesData = categoriesData as unknown as { content?: CategoryItem[]; data?: CategoryItem[] };
   const categoriesList: CategoryItem[] = Array.isArray(categoriesData) 
     ? categoriesData : safeCategoriesData?.content || safeCategoriesData?.data || [];
 
-  const activeFilters = {
-    page: 0, size: 20,
+const activeFilters = {
+    page: 0, 
+    size: 20,
     ...(type !== "ALL" && { type: type as "LOST" | "FOUND" }),
     ...(city !== "ALL" && { city }),
     ...(categoryId !== "ALL" && { categoryId: Number(categoryId) }),
-    ...(locationDetails.trim() && { locationDetails: locationDetails.trim() }),
+    // 3. Use the DEBOUNCED value here instead of the raw state
+    ...(debouncedLocation.trim() && { locationDetails: debouncedLocation.trim() }),
   };
-
   const { data: postsPage, isLoading } = usePosts(activeFilters);
   const posts = postsPage?.content || [];
 

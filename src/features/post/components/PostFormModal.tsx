@@ -18,6 +18,7 @@ import { api } from "@/lib/api/axios";
 import { useCreatePost, useUpdatePost } from "@/features/post/hooks/usePosts";
 import { useCategories } from "@/features/categories/hooks/useCategories";
 import { PostResponseDto } from "@/features/post/api/response/posts.response";
+import MapSearchPicker from "@/components/map/MapSearchPicker";
 
 interface ImageUploadResponse {
   url: string;
@@ -32,6 +33,8 @@ const postSchema = z.object({
   categoryId: z.string().min(1, "Category is required"), 
   city: z.string().min(1, "City is required"),
   locationDetails: z.string().trim().min(1, "Location details are required"),
+  latitude: z.number().refine(val => val !== 0, { message: "Please search and select a location from the map" }),
+  longitude: z.number().refine(val => val !== 0, { message: "Please search and select a location from the map" }),
   lostFoundDate: z.date(),
   contactInfo: z.string().trim().min(1, "Contact info is required"),
   reward: z.coerce.number().optional().default(0),
@@ -112,6 +115,8 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
       categoryId: "", 
       city: "",
       locationDetails: "",
+      latitude: 0,
+      longitude: 0,
       lostFoundDate: new Date(),
       contactInfo: "",
       reward: 0,
@@ -133,6 +138,8 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         categoryId: String(postToEdit.category.id), 
         city: postToEdit.city,
         locationDetails: postToEdit.locationDetails,
+        latitude: postToEdit.latitude,
+        longitude: postToEdit.longitude,
         lostFoundDate: new Date(postToEdit.lostFoundDate),
         contactInfo: postToEdit.contactInfo,
         reward: postToEdit.reward ?? 0,
@@ -151,6 +158,8 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         categoryId: "", 
         city: "",
         locationDetails: "",
+        latitude: 0,
+        longitude: 0,
         lostFoundDate: new Date(),
         contactInfo: "",
         reward: 0,
@@ -283,20 +292,29 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
               required
             />
 
-            <InputForm 
-              control={form.control} 
-              name="locationDetails" 
-              label="Location Details" 
-              placeholder="e.g. Near main gate, Bus stop..."
-              required 
-            />
-
             <DatePickerForm 
               control={form.control} 
               name="lostFoundDate" 
               label="Date" 
               required 
             />
+
+            {/* Replaced LocationDetails Input with MapSearchPicker */}
+            <div className="md:col-span-2">
+              <MapSearchPicker 
+                defaultLocation={isUpdate && postToEdit ? postToEdit.locationDetails : ""}
+                onLocationSelect={(lat, lon, name) => {
+                  form.setValue("latitude", lat, { shouldValidate: true });
+                  form.setValue("longitude", lon, { shouldValidate: true });
+                  form.setValue("locationDetails", name, { shouldValidate: true });
+                }} 
+              />
+              {form.formState.errors.latitude && (
+                 <p className="text-[0.8rem] font-medium text-destructive mt-1">
+                   {form.formState.errors.latitude.message}
+                 </p>
+              )}
+            </div>
 
             <InputForm control={form.control} name="reward" label="Reward Amount (Optional)" type="number" />
             

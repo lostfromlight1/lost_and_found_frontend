@@ -10,30 +10,26 @@ import { useUpdateProfile, useUploadAvatar } from "@/features/users/hooks/useUse
 import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import InputForm from "@/components/form/InputForm";
+import { Loader2, Camera } from "lucide-react";
 
 const profileSchema = z.object({
-  displayName: z
-    .string()
-    .trim()
-    .min(1, { message: "Display name is required" })
-    .max(100),
+  displayName: z.string().trim().min(1).max(100),
   contactInfo: z
     .string()
     .trim()
-    .min(1, { message: "Contact info is required" })
-    .regex(/^\+[0-9]+$/, { 
-      message: "Must start with '+' followed by numbers (e.g., +959886455064)" 
+    .min(1)
+    .regex(/^\+[0-9]+$/, {
+      message: "Use format: +959xxxxxxxx",
     })
     .max(255),
 });
 
 export function ProfileSettingsForm() {
-  // 1. FIXED: Extract the 'update' function from useSession
   const { data: session, update: updateSession } = useSession();
-  
+
   const { mutate: updateProfile, isPending: isUpdating } = useUpdateProfile();
   const { mutate: uploadAvatar, isPending: isUploading } = useUploadAvatar();
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof profileSchema>>({
@@ -43,114 +39,141 @@ export function ProfileSettingsForm() {
 
   useEffect(() => {
     if (session?.user) {
-      form.reset({ 
-        displayName: session.user.displayName || "", 
-        contactInfo: session.user.contactInfo || ""
+      form.reset({
+        displayName: session.user.displayName || "",
+        contactInfo: session.user.contactInfo || "",
       });
     }
   }, [session, form]);
 
   const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    const { dirtyFields } = form.formState;
-
-    if (Object.keys(dirtyFields).length === 0) {
-      toast.warning("Please make a change to update.");
+    if (!form.formState.isDirty) {
+      toast.warning("No changes detected.");
       return;
     }
 
-    updateProfile(data, { 
-      // 2. FIXED: Force session refresh after updating profile info
+    updateProfile(data, {
       onSuccess: async () => {
-        await updateSession(); 
-        form.reset(data); 
-        toast.success("Profile updated successfully!");
-      } 
+        await updateSession();
+        form.reset(data);
+        toast.success("Profile updated");
+      },
     });
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
-        return;
-      }
-      
-      // 3. FIXED: Force session refresh after uploading avatar
-      uploadAvatar(file, {
-        onSuccess: async () => {
-          await updateSession();
-          toast.success("Profile picture updated!");
-        }
-      });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Max 5MB only");
+      return;
     }
+
+    uploadAvatar(file, {
+      onSuccess: async () => {
+        await updateSession();
+        toast.success("Avatar updated");
+      },
+    });
   };
 
   return (
-    <div className="space-y-6 max-w-md">
-      
-      {/* Avatar Upload Section */}
-      <div className="flex items-center gap-6 p-4 bg-slate-50 border rounded-lg">
-        <div 
-          className="h-20 w-20 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-300 flex items-center justify-center cursor-pointer hover:opacity-80 transition"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {session?.user?.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={session.user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-          ) : (
-            <span className="text-2xl font-bold text-slate-500">
-              {session?.user?.displayName?.charAt(0).toUpperCase() || "U"}
-            </span>
-          )}
-        </div>
-        <div>
-          <h3 className="font-medium text-slate-900">Profile Picture</h3>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2"
-            disabled={isUploading}
-            onClick={(e) => {
-              e.preventDefault();
-              fileInputRef.current?.click();
-            }}
-          >
-            {isUploading ? "Uploading..." : "Change Picture"}
-          </Button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            accept="image/png, image/jpeg, image/webp" 
-            className="hidden" 
+    <div className="max-w-xl mx-auto space-y-6">
+      <div className="bg-white shadow-sm border rounded-2xl p-6 space-y-6">
+        <div className="flex items-center gap-5">
+          <div
+            className="relative group cursor-pointer"
+            onClick={() => fileInputRef.current?.click()}>
+            <div className="h-24 w-24 rounded-full overflow-hidden border">
+              {session?.user?.avatarUrl ? (
+                <img
+                  src={session.user.avatarUrl}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-slate-200 text-2xl font-bold">
+                  {session?.user?.displayName?.charAt(0) || "U"}
+                </div>
+              )}
+            </div>
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-full">
+              {isUploading ? (
+                <Loader2 className="animate-spin text-white" />
+              ) : (
+                <Camera className="text-white" />
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold">Profile Picture</h2>
+            <p className="text-sm text-muted-foreground">
+              Click avatar to upload new image
+            </p>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
           />
         </div>
-      </div>
+        <div className="grid gap-2 text-sm">
+          <p>
+            <span className="text-muted-foreground">Name:</span>{" "}
+            <span className="font-medium">
+              {session?.user?.displayName || "-"}
+            </span>
+          </p>
 
-      <div className="p-4 bg-slate-50 border rounded-lg space-y-1">
-        <p className="text-sm text-slate-500">
-          Display Name: <span className="font-semibold text-slate-900 ml-1">{session?.user?.displayName}</span>
-        </p>
-        <p className="text-sm text-slate-500">
-          Contact Info: 
-          {session?.user?.contactInfo ? (
-            <span className="font-semibold text-slate-900 ml-1">{session.user.contactInfo}</span>
-          ) : (
-            <span className="font-medium text-amber-600 italic ml-1">Please add a contact number</span>
-          )}
-        </p>
+          <p>
+            <span className="text-muted-foreground">Contact:</span>{" "}
+            <span className="font-medium">
+              {session?.user?.contactInfo || "Not set"}
+            </span>
+          </p>
+        </div>
       </div>
+      <div className="bg-white shadow-sm border rounded-2xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Edit Profile</h3>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <InputForm control={form.control} name="displayName" label="Display Name" required />
-          <InputForm control={form.control} name="contactInfo" label="Contact Info" placeholder="e.g. +959886455064" required />
-          <Button type="submit" disabled={isUpdating || !form.formState.isDirty}>
-            {isUpdating ? "Saving..." : "Update Profile"}
-          </Button>
-        </form>
-      </Form>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <InputForm
+              control={form.control}
+              name="displayName"
+              label="Display Name"
+              required
+            />
+
+            <InputForm
+              control={form.control}
+              name="contactInfo"
+              label="Contact Number"
+              placeholder="+959xxxxxxxx"
+              required
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isUpdating || !form.formState.isDirty}
+            >
+              {isUpdating ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="animate-spin h-4 w-4" />
+                  Saving...
+                </span>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }

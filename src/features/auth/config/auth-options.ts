@@ -24,6 +24,22 @@ type SessionUser = Omit<BackendAuthData, "accessToken" | "refreshToken" | "expir
 
 let refreshPromise: Promise<JWT> | null = null;
 
+// --- DEFENSIVE FETCH HELPER ---
+// Prevents JSON.parse from crashing if Spring Boot returns an HTML error page.
+async function safeFetchJson(url: string, options: RequestInit) {
+  const res = await fetch(url, options);
+  const contentType = res.headers.get("content-type");
+  
+  if (contentType && contentType.includes("application/json")) {
+    return { ok: res.ok, status: res.status, json: await res.json() };
+  }
+  
+  const text = await res.text();
+  console.error(`🚨 [Backend Error] Expected JSON from ${url} but got HTML/Text. Status: ${res.status}`);
+  console.error(`🚨 [Backend Response Body]:`, text.substring(0, 300)); 
+  throw new Error(`Server returned an invalid response (Status: ${res.status})`);
+}
+
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   if (refreshPromise) {
     return refreshPromise;
@@ -31,7 +47,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
   refreshPromise = (async () => {
     try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
+      const response = await safeFetchJson(`${API_URL}/auth/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -40,13 +56,11 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
         body: JSON.stringify({ refreshToken: token.refreshToken })
       });
 
-      const refreshedTokens = await response.json();
-
-      if (!response.ok || !refreshedTokens.data) {
+      if (!response.ok || !response.json?.data) {
         throw new Error("RefreshAccessTokenError");
       }
 
-      const { accessToken, refreshToken, expiresIn } = refreshedTokens.data;
+      const { accessToken, refreshToken, expiresIn } = response.json.data;
 
       return {
         ...token,
@@ -79,25 +93,28 @@ export const authOptions: NextAuthOptions = {
       name: "Credentials",
       credentials: { email: { type: "email" }, password: { type: "password" } },
       async authorize(credentials) {
-        const res = await fetch(`${API_URL}/auth/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
-          body: JSON.stringify(credentials),
-        });
-        
-        const json = await res.json();
-        
-        if (res.ok && json.data) {
-          const { accessToken, refreshToken, expiresIn, user } = json.data;
-          return {
-            ...user,
-            id: Number(user.id),
-            accessToken,
-            refreshToken,
-            expiresIn: Number(expiresIn),
-          } as unknown as User;
+        try {
+          const response = await safeFetchJson(`${API_URL}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
+            body: JSON.stringify(credentials),
+          });
+          
+          if (response.ok && response.json?.data) {
+            const { accessToken, refreshToken, expiresIn, user } = response.json.data;
+            return {
+              ...user,
+              id: Number(user.id),
+              accessToken,
+              refreshToken,
+              expiresIn: Number(expiresIn),
+            } as unknown as User;
+          }
+          throw new Error(response.json?.message || "Invalid credentials");
+        } catch (error: unknown) {
+          if (error instanceof Error) throw new Error(error.message);
+          throw new Error("Unable to connect to the server.");
         }
-        throw new Error(json.message || "Invalid credentials");
       },
     }),
   ],
@@ -116,7 +133,7 @@ export const authOptions: NextAuthOptions = {
       // 2. Google Login
       if (account?.provider === "google" && account.id_token) {
         try {
-          const res = await fetch(`${API_URL}/auth/google`, {
+          const response = await safeFetchJson(`${API_URL}/auth/google`, {
             method: "POST",
             headers: { 
               "Content-Type": "application/json", 
@@ -125,10 +142,8 @@ export const authOptions: NextAuthOptions = {
             body: JSON.stringify({ idToken: account.id_token }),
           });
 
-          const json = await res.json();
-
-          if (res.ok && json.data) {
-            const { accessToken, refreshToken, expiresIn, user: backendUser } = json.data;
+          if (response.ok && response.json?.data) {
+            const { accessToken, refreshToken, expiresIn, user: backendUser } = response.json.data;
             return {
               ...token,
               accessToken,

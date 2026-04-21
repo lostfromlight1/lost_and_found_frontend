@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
@@ -15,6 +16,16 @@ import { CommentResponse } from "@/features/comments/api/response/comments.respo
 import { usePostComments, useCreateComment, useCreateReply } from "@/features/comments/hooks/useComments";
 import { useDeletePost } from "../hooks/usePosts";
 import PostFormModal from "./PostFormModal";
+
+// Dynamically import the map so it only loads on the client side
+const MapDisplay = dynamic(() => import("@/components/map/MapDisplay"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 w-full bg-slate-100 animate-pulse rounded-xl flex items-center justify-center text-slate-400 text-sm border border-slate-200">
+      Loading map...
+    </div>
+  ),
+});
 
 // --- SUB-COMPONENT: Single Comment Thread ---
 const CommentThread = ({ comment, postId }: { comment: CommentResponse, postId: number }) => {
@@ -94,6 +105,7 @@ const CommentThread = ({ comment, postId }: { comment: CommentResponse, postId: 
 export default function PostCard({ post }: { post: PostResponseDto }) {
   const { data: session } = useSession();
   const [showComments, setShowComments] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -102,7 +114,6 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
   const { mutate: deletePost } = useDeletePost();
 
   const currentUser = session?.user;
-  // FIXED: Compare both as strings to avoid type mismatch
   const isOwner = String(currentUser?.id) === String(post.user.id);
   const isAdmin = currentUser?.role === "ADMIN";
   const canManage = isOwner || isAdmin;
@@ -148,7 +159,6 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
             
             {/* 3-Dot Menu */}
             <DropdownMenu>
-              {/* FIXED: Rendered Trigger without asChild to avoid element mismatches */}
               <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 -mr-2 transition-colors outline-none">
                 <MoreVertical size={18} />
               </DropdownMenuTrigger>
@@ -179,14 +189,23 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
           <p className="text-sm text-slate-700 whitespace-pre-wrap mb-4 leading-relaxed">{post.description}</p>
           
           <div className="flex flex-wrap gap-2 mb-4">
-            <div className="flex items-start gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 wrap-break-word max-w-full">
-              <MapPin size={14} className="shrink-0 mt-0.5 text-slate-400" />
-              <span className="leading-snug">{post.city} - {post.locationDetails}</span>
+            {/* Clickable Map Location Tag */}
+            <div 
+              onClick={() => setShowMap(!showMap)}
+              className="flex items-start gap-1.5 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 wrap-break-word max-w-full cursor-pointer hover:bg-blue-100 transition-colors shadow-sm"
+            >
+              <MapPin size={14} className="shrink-0 mt-0.5 text-blue-600" />
+              <span className="leading-snug">
+                {post.city} - {post.locationDetails} 
+                <span className="text-blue-600 font-bold ml-1">({showMap ? 'Hide' : 'View'} Map)</span>
+              </span>
             </div>
+            
             <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700">
               <Phone size={14} className="text-slate-400" />
               {post.contactInfo}
             </div>
+            
             {(post.reward ?? 0) > 0 && (
                <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 text-yellow-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
                  <Gift size={14} />
@@ -195,6 +214,14 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
             )}
           </div>
 
+          {/* Map View Toggle */}
+          {showMap && post.latitude && post.longitude && (
+            <div className="mb-4 mt-2 animate-in fade-in zoom-in-95 duration-200">
+               <MapDisplay lat={post.latitude} lon={post.longitude} name={post.locationDetails} />
+            </div>
+          )}
+
+          {/* Post Images */}
           {post.images && post.images.length > 0 && (
             <div className={`grid gap-1.5 mt-2 rounded-xl overflow-hidden ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
               {post.images.slice(0, 4).map((img, index) => (

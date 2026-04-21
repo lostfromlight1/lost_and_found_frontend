@@ -24,6 +24,8 @@ export interface PostResponseDto {
   status: "OPEN" | "CLOSE"; 
   city: string;
   locationDetails: string;
+  latitude: number;  
+  longitude: number;
   lostFoundDate: string;
   contactInfo: string;
   reward: number | null; 
