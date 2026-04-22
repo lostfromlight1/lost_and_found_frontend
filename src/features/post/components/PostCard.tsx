@@ -25,7 +25,7 @@ import {
   useDeleteReply,     
   calculateTotalCommentCount 
 } from "@/features/comments/hooks/useComments";
-import { useDeletePost } from "../hooks/usePosts";
+import { useDeletePost, useToggleLikePost } from "../hooks/usePosts"; // <-- Added useToggleLikePost here
 import PostFormModal from "./PostFormModal";
 import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialog";
 import CommentInput from "@/features/comments/components/CommentInput";
@@ -404,6 +404,9 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
   const { data: comments, isLoading: isLoadingComments } = usePostComments(showComments ? post.id : 0);
   const { mutate: addComment, isPending: isAddingComment } = useCreateComment();
   const { mutate: deletePost } = useDeletePost();
+  
+  // Initialize toggle like mutation
+  const { mutate: toggleLike, isPending: isLiking } = useToggleLikePost();
 
   const currentUser = session?.user as CurrentUser | undefined;
   const isOwner = String(currentUser?.id) === String(post.user.id);
@@ -427,8 +430,6 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
     });
   };
 
-  // Move declarations BEFORE they are used in useEffect
-  // Wrap in useCallback to prevent them from constantly redefining on re-renders
   const nextImage = useCallback(() => {
     setActiveImageIndex((prev) => Math.min(prev + 1, (post.images?.length || 1) - 1));
   }, [post.images?.length]);
@@ -611,8 +612,15 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
         </div>
 
         <div className="px-2 py-1.5 border-t border-slate-100 flex items-center justify-around sm:justify-start sm:gap-6">
-          <button className={`flex items-center gap-2 font-medium text-[14px] transition-colors rounded-full px-4 py-2 group ${post.liked ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>
-            <ThumbsUp size={18} className="group-hover:-translate-y-0.5 transition-transform" /> 
+          <button 
+            onClick={() => {
+              if (!currentUser) return toast.warning("Please log in to like posts.");
+              toggleLike(post.id);
+            }}
+            disabled={isLiking}
+            className={`flex items-center gap-2 font-medium text-[14px] transition-colors rounded-full px-4 py-2 group ${post.liked ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'} disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <ThumbsUp size={18} className={`group-hover:-translate-y-0.5 transition-transform ${post.liked ? 'fill-blue-600' : ''}`} /> 
             Like {post.LikeCount > 0 ? `(${post.LikeCount})` : ''}
           </button>
           <button 

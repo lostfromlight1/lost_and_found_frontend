@@ -14,6 +14,10 @@ export const getAllPostsApi = async (filters: PostFilters): Promise<PageResponse
   return await apiClient.get("/posts", { params: filters });
 };
 
+export const toggleLikePostApi = async (id: number): Promise<void> => {
+  return await apiClient.post(`/posts/${id}/like`);
+};
+
 export const deletePostApi = async (id: number): Promise<void> => {
   return await apiClient.delete(`/posts/${id}`);
 };
