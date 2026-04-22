@@ -21,17 +21,20 @@ export interface PostResponseDto {
   title: string;
   description: string;
   type: "LOST" | "FOUND";
-  status: "OPEN" | "CLOSE"; 
+  status: "OPEN" | "CLOSE" | "RESOLVED"; 
   city: string;
   locationDetails: string;
   latitude: number;  
   longitude: number;
-  lostFoundDate: string;
+  lostFoundDate: string; 
+  createdAt: string; 
   contactInfo: string;
   reward: number | null; 
   user: UserSummaryDto;
   category: CategoryDto;
   images: ImageDto[];
+  LikeCount: number; 
+  liked: boolean;
 }
 
 export interface PageResponse<T> {

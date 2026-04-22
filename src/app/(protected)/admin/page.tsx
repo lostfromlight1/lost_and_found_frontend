@@ -5,7 +5,7 @@ import { UserManagementTable } from "@/features/admin/components/UserManagementT
 import { CategoryManagementTable } from "@/features/admin/components/CategoryManagementTable";
 import PostManagementTable from "@/features/admin/components/PostManagementTable";
 import { DashboardHeader } from "@/features/users/components/DashboardHeader";
-import { ShieldCheckIcon, UsersIcon, TagIcon, ArticleIcon } from "@phosphor-icons/react/dist/ssr";
+import { UsersIcon, TagIcon, ArticleIcon } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
 export default function AdminPage() {

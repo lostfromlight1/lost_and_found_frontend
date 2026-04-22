@@ -6,8 +6,12 @@ import {
   getCommentsByPostService,
   createCommentService,
   createReplyService,
+  updateCommentService,
+  deleteCommentService,
+updateReplyService,
+  deleteReplyService
 } from "../services/comments.service";
-import { CreateCommentRequest, CreateReplyRequest } from "../api/request/comments.request";
+import { CreateCommentRequest, CreateReplyRequest, UpdateCommentRequest } from "../api/request/comments.request";
 import { CommentResponse, ReplyResponse } from "../api/response/comments.response";
 
 // --- ERROR HANDLER ---
@@ -24,6 +28,24 @@ const handleApiError = (error: unknown) => {
   } else {
     toast.error("An unexpected error occurred");
   }
+};
+
+// --- HELPERS ---
+
+export const calculateTotalCommentCount = (comments: CommentResponse[] = []): number => {
+  let totalCount = 0;
+  comments.forEach((comment) => {
+    totalCount += 1; 
+    if (comment.replies) {
+      totalCount += comment.replies.length; 
+      comment.replies.forEach((reply) => {
+        if (reply.nestedReplies) {
+          totalCount += reply.nestedReplies.length; 
+        }
+      });
+    }
+  });
+  return totalCount;
 };
 
 // --- QUERIES ---
@@ -58,6 +80,58 @@ export const useCreateReply = (postId: number) => {
     mutationFn: (data) => createReplyService(data),
     onSuccess: () => {
       toast.success("Reply added successfully");
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useUpdateComment = (postId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<CommentResponse, unknown, { id: number; data: UpdateCommentRequest }>({
+    mutationFn: ({ id, data }) => updateCommentService(id, data),
+    onSuccess: () => {
+      toast.success("Comment updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useDeleteComment = (postId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, unknown, number>({
+    mutationFn: (id) => deleteCommentService(id),
+    onSuccess: () => {
+      toast.success("Comment deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useUpdateReply = (postId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ReplyResponse, unknown, { id: number; data: UpdateCommentRequest }>({
+    mutationFn: ({ id, data }) => updateReplyService(id, data),
+    onSuccess: () => {
+      toast.success("Reply updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+    },
+    onError: handleApiError,
+  });
+};
+
+export const useDeleteReply = (postId: number) => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, unknown, number>({
+    mutationFn: (id) => deleteReplyService(id),
+    onSuccess: () => {
+      toast.success("Reply deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
     },
     onError: handleApiError,

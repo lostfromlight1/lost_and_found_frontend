@@ -1,88 +1,103 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
+import { BaseErrorResponse } from "@/types/api.types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
-    ...(process.env.NEXT_PUBLIC_API_KEY && { "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY }),
+    ...(process.env.NEXT_PUBLIC_API_KEY && {
+      "X-API-KEY": process.env.NEXT_PUBLIC_API_KEY,
+    }),
   },
 });
 
 let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+type SubscriberCallback = (token: string | null) => void;
+let subscribers: SubscriberCallback[] = [];
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
-}
+const subscribe = (cb: SubscriberCallback) => {
+  subscribers.push(cb);
+};
 
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
-}
+const notify = (token: string | null) => {
+  subscribers.forEach((cb) => cb(token));
+  subscribers = [];
+};
 
 api.interceptors.request.use(
-  async (config) => {
+  async (config: InternalAxiosRequestConfig) => {
     const session = await getSession();
     if (session?.accessToken) {
       config.headers.Authorization = `Bearer ${session.accessToken}`;
     }
     return config;
-  },
-  (error) => Promise.reject(error)
+  }
 );
 
 api.interceptors.response.use(
-  (response) => {
-    return response.data?.data !== undefined ? response.data.data : response.data;
-  },
-  async (error) => {
-    const originalRequest = error.config;
+  (res) => (res.data?.data !== undefined ? res.data.data : res.data),
+  async (error: AxiosError<BaseErrorResponse>) => {
+    if (!error.config) return Promise.reject(error);
 
-    const isUnauthorized = 
-      error.response?.status === 401 || 
+    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    const isUnauthorized =
+      error.response?.status === 401 ||
       error.response?.data?.httpStatus === 401 ||
       error.response?.data?.errorCode === "TOKEN_EXPIRED";
 
-    if (isUnauthorized && !originalRequest._retry) {
-      
+    if (isUnauthorized && !original._retry) {
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token: string) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
+        return new Promise((resolve, reject) => {
+          subscribe((token) => {
+            if (token) {
+              original.headers.Authorization = `Bearer ${token}`;
+              resolve(api(original));
+            } else {
+              reject(new Error("Session expired"));
+            }
           });
         });
       }
 
-      originalRequest._retry = true;
+      original._retry = true;
       isRefreshing = true;
 
       try {
-        // Bypass Next.js cache to trigger JWT refresh evaluation
-        const res = await fetch("/api/auth/session?update=" + Date.now());
-        const session = await res.json();
+        // --- DOUBLE CHECK LOGIC ---
+        // Verify if the token was already refreshed by another concurrent request
+        const session = await getSession();
+        const currentToken = session?.accessToken;
+        const failedToken = original.headers.Authorization?.toString().replace("Bearer ", "");
 
-        if (!session?.accessToken || session.error === "RefreshAccessTokenError") {
-          throw new Error("Token refresh failed");
+        if (currentToken && currentToken !== failedToken) {
+          notify(currentToken);
+          original.headers.Authorization = `Bearer ${currentToken}`;
+          return api(original);
         }
 
-        const newToken = session.accessToken;
-        
-        onRefreshed(newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        
-        return api(originalRequest);
+        // --- TRIGGER REFRESH ---
+        const res = await fetch(`/api/auth/session?update=${Date.now()}`);
+        const updatedSession = await res.json();
+
+        if (!updatedSession?.accessToken || updatedSession.error) {
+          throw new Error("Refresh failed");
+        }
+
+        notify(updatedSession.accessToken);
+        original.headers.Authorization = `Bearer ${updatedSession.accessToken}`;
+        return api(original);
       } catch (err) {
-        await signOut({ callbackUrl: "/login?error=SessionExpired", redirect: true });
+        notify(null); // Stop the hanging queue
+        await signOut({ callbackUrl: "/login?error=SessionExpired" });
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }
     }
-
     return Promise.reject(error);
   }
 );

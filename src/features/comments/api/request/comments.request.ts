@@ -12,3 +12,9 @@ export interface CreateReplyRequest {
   imageUrl?: string;
   imagePublicId?: string;
 }
+
+export interface UpdateCommentRequest {
+  content: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+}

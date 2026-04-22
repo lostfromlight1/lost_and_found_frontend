@@ -1,291 +1,731 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { format } from "date-fns";
-import { MessageCircle, MapPin, Gift, Phone, CornerDownRight, MoreVertical, ThumbsUp, Share2, Pencil, Trash2, Flag } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { 
+  MessageCircle, ThumbsUp, Share2, Pencil, Trash2, Flag, 
+  ChevronLeft, ChevronRight, MapPin, MoreHorizontal, X 
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PostResponseDto } from "../api/response/posts.response";
-import { CommentResponse } from "@/features/comments/api/response/comments.response";
-import { usePostComments, useCreateComment, useCreateReply } from "@/features/comments/hooks/useComments";
+import { CommentResponse, ReplyResponse } from "@/features/comments/api/response/comments.response";
+import { 
+  usePostComments, 
+  useCreateComment, 
+  useCreateReply, 
+  useUpdateComment, 
+  useDeleteComment, 
+  useUpdateReply,     
+  useDeleteReply,     
+  calculateTotalCommentCount 
+} from "@/features/comments/hooks/useComments";
 import { useDeletePost } from "../hooks/usePosts";
 import PostFormModal from "./PostFormModal";
+import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialog";
+import CommentInput from "@/features/comments/components/CommentInput";
+import { Button } from "@/components/ui/button";
 
-// Dynamically import the map so it only loads on the client side
 const MapDisplay = dynamic(() => import("@/components/map/MapDisplay"), {
   ssr: false,
   loading: () => (
-    <div className="h-64 w-full bg-slate-100 animate-pulse rounded-xl flex items-center justify-center text-slate-400 text-sm border border-slate-200">
+    <div className="h-64 w-full bg-slate-50 animate-pulse border border-slate-100 flex items-center justify-center text-slate-400 text-sm">
       Loading map...
     </div>
   ),
 });
 
-// --- SUB-COMPONENT: Single Comment Thread ---
-const CommentThread = ({ comment, postId }: { comment: CommentResponse, postId: number }) => {
+const safeDate = (dateStr: string | undefined | null) => {
+  if (!dateStr) return new Date();
+  if (dateStr.length === 10) return new Date(`${dateStr}T00:00:00`);
+  return new Date(dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`);
+};
+
+type CurrentUser = {
+  id?: string | number;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  avatarUrl?: string | null;
+  role?: string;
+};
+
+const formatContent = (text: string) => {
+  const match = text.match(/^(@[a-zA-Z0-9_]+(?:\s[a-zA-Z0-9_]+)?)(?=\s|$)/);
+  if (match) {
+    const mention = match[1];
+    const rest = text.slice(mention.length);
+    return (
+      <>
+        <span className="text-blue-600 font-semibold">{mention}</span>
+        {rest}
+      </>
+    );
+  }
+  return text;
+};
+
+const ReplyItem = ({
+  reply,
+  rootCommentId,
+  postId,
+  currentUser,
+}: {
+  reply: ReplyResponse;
+  rootCommentId: number;
+  postId: number;
+  currentUser: CurrentUser | undefined;
+}) => {
   const [isReplying, setIsReplying] = useState(false);
   const [replyContent, setReplyContent] = useState("");
-  const [replyTarget, setReplyTarget] = useState<{ id?: number, name?: string }>({});
-  
-  const { mutate: addReply, isPending: isAddingReply } = useCreateReply(postId);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(reply.content);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const handleReplySubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const { mutate: addReply, isPending: isAdding } = useCreateReply(postId);
+  const { mutate: updateReply, isPending: isUpdating } = useUpdateReply(postId);
+  const { mutate: deleteReply } = useDeleteReply(postId);
+
+  const isOwner = String(currentUser?.id) === String(reply.userId);
+
+  const submitReply = () => {
     if (!replyContent.trim()) return;
-    addReply({ commentId: comment.id, content: replyContent.trim(), replyToId: replyTarget.id }, {
-      onSuccess: () => { setReplyContent(""); setIsReplying(false); setReplyTarget({}); }
+    addReply(
+      {
+        commentId: rootCommentId,
+        content: `@${reply.authorName} ${replyContent.trim()}`,
+        replyToId: reply.id,
+      },
+      {
+        onSuccess: () => {
+          setReplyContent("");
+          setIsReplying(false);
+        },
+      }
+    );
+  };
+
+  const handleUpdate = () => {
+    if (!editContent.trim()) return;
+    updateReply(
+      { id: reply.id, data: { content: editContent } },
+      { onSuccess: () => setIsEditing(false) }
+    );
+  };
+
+  const confirmDelete = () => {
+    deleteReply(reply.id, {
+      onSuccess: () => setIsDeleteDialogOpen(false),
+      onError: () => {
+        toast.error("Failed to delete reply");
+        setIsDeleteDialogOpen(false);
+      }
     });
   };
 
-  const openReply = (targetId?: number, targetName?: string) => {
-    setReplyTarget({ id: targetId, name: targetName });
-    setIsReplying(true);
-  };
-
   return (
-    <div className="flex flex-col gap-2 w-full">
-      <div className="flex gap-2 w-full">
-        <Avatar className="w-8 h-8 mt-1">
-          <AvatarImage src={comment.authorAvatarUrl || undefined} />
-          <AvatarFallback className="bg-slate-200 text-xs">{comment.authorName?.charAt(0) || "U"}</AvatarFallback>
+    <div className="relative pl-6 pt-2">
+      <div className="absolute left-2 top-0 bottom-0 w-px bg-slate-300 z-0" />
+      <div className="absolute left-2 top-6 w-4 h-px bg-slate-300 z-0" />
+
+      <div className="flex gap-2 relative">
+        <Avatar className="w-8 h-8 rounded-full border border-slate-200 bg-white z-10 shrink-0 overflow-hidden aspect-square">
+          <AvatarImage src={reply.authorAvatarUrl || undefined} className="object-cover w-full h-full" />
+          <AvatarFallback className="flex items-center justify-center w-full h-full text-xs">
+            {reply.authorName?.[0] || "U"}
+          </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col w-full">
-          <div className="bg-slate-100 px-3 py-2 rounded-2xl rounded-tl-none w-fit max-w-full">
-            <p className="text-xs font-semibold">{comment.authorName}</p>
-            <p className="text-sm text-slate-800 wrap-break-word">{comment.content}</p>
+
+        <div className="flex flex-col w-full pb-1">
+          <div className="flex items-center justify-between">
+            <div className="text-[13px]">
+              <span className="font-semibold text-slate-900">
+                {reply.authorName}
+              </span>
+              <span className="text-slate-500 ml-1">
+                · {format(safeDate(reply.createdAt), "MMM d, h:mm a")}
+              </span>
+            </div>
+            
+            {isOwner && !isEditing && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="text-slate-400 hover:text-slate-700 outline-none p-1">
+                  <MoreHorizontal size={14} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32 min-w-30">
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} className="text-xs cursor-pointer">
+                    <Pencil size={12} className="mr-2"/> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-xs text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50">
+                    <Trash2 size={12} className="mr-2"/> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-          <div className="flex items-center gap-3 px-2 mt-1 text-[11px] text-slate-500 font-medium">
-            <span>{format(new Date(comment.createdAt), "MMM d, h:mm a")}</span>
-            <button type="button" className="hover:text-slate-800 hover:underline" onClick={() => openReply()}>Reply</button>
-          </div>
+
+          {isEditing ? (
+            <CommentInput
+              value={editContent}
+              onChange={setEditContent}
+              onSubmit={handleUpdate}
+              isLoading={isUpdating}
+              isEditing
+              hideAvatar
+              onCancelEdit={() => setIsEditing(false)}
+              buttonText="Save"
+            />
+          ) : (
+            <>
+              <p className="text-[13px] text-slate-800 whitespace-pre-wrap mt-1 leading-relaxed">
+                {formatContent(reply.content)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsReplying(!isReplying)}
+                className="flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-slate-800 mt-1 self-start transition-colors"
+              >
+                <MessageCircle size={13} /> Reply
+              </button>
+            </>
+          )}
+
+          {(reply.nestedReplies?.length ?? 0) > 0 && (
+            <div className="mt-1">
+              {reply.nestedReplies?.map((r) => (
+                <ReplyItem
+                  key={r.id}
+                  reply={r}
+                  rootCommentId={rootCommentId}
+                  postId={postId}
+                  currentUser={currentUser}
+                />
+              ))}
+            </div>
+          )}
+
+          {isReplying && (
+            <div className="mt-3 relative">
+              <div className="absolute -left-6 top-3.5 w-6 h-px bg-slate-300 z-0" />
+              <CommentInput
+                value={replyContent}
+                onChange={setReplyContent}
+                onSubmit={submitReply}
+                isLoading={isAdding}
+                avatarUrl={currentUser?.avatarUrl}
+                mentionPrefix={reply.authorName}
+                placeholder="Write a reply..."
+                buttonText="Reply"
+              />
+            </div>
+          )}
         </div>
       </div>
-      {comment.replies && comment.replies.length > 0 && (
-        <div className="pl-10 flex flex-col gap-3 mt-1">
-          {comment.replies.map((reply) => (
-            <div key={reply.id} className="flex gap-2 w-full">
-               <Avatar className="w-6 h-6 mt-1">
-                <AvatarImage src={reply.authorAvatarUrl || undefined} />
-                <AvatarFallback className="bg-slate-200 text-[10px]">{reply.authorName?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col w-full">
-                <div className="bg-slate-50 px-3 py-2 rounded-2xl rounded-tl-none w-fit max-w-full border border-slate-100">
-                  <p className="text-xs font-semibold">
-                    {reply.authorName} {reply.replyToAuthorName && <span className="text-slate-400 font-normal ml-1">▶ {reply.replyToAuthorName}</span>}
-                  </p>
-                  <p className="text-sm text-slate-800 wrap-break-word">{reply.content}</p>
-                </div>
-                <div className="flex items-center gap-3 px-2 mt-1 text-[10px] text-slate-500 font-medium">
-                  <button type="button" className="hover:text-slate-800 hover:underline" onClick={() => openReply(reply.id, reply.authorName)}>Reply</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {isReplying && (
-        <form onSubmit={handleReplySubmit} className="flex gap-2 pl-10 mt-2 items-center">
-           <CornerDownRight size={14} className="text-slate-300" />
-           <Input autoFocus placeholder={replyTarget.name ? `Reply to ${replyTarget.name}...` : "Write a reply..."} value={replyContent} onChange={(e) => setReplyContent(e.target.value)} className="flex-1 rounded-full h-8 text-xs bg-slate-50 focus-visible:ring-1" disabled={isAddingReply} />
-           <Button type="submit" size="sm" className="rounded-full px-3 h-8 text-xs" disabled={!replyContent.trim() || isAddingReply}>Send</Button>
-           <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-slate-400" onClick={() => setIsReplying(false)}>Cancel</Button>
-        </form>
-      )}
+
+      <DeleteConfirmationDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        entityLabel="reply"
+      />
     </div>
   );
 };
 
-// --- MAIN POST CARD COMPONENT ---
+const CommentThread = ({ comment, postId, currentUser }: { comment: CommentResponse, postId: number, currentUser: CurrentUser | undefined }) => {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyContent, setReplyContent] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const { mutate: addReply, isPending: isAdding } = useCreateReply(postId);
+  const { mutate: updateComment, isPending: isUpdating } = useUpdateComment(postId);
+  const { mutate: deleteComment } = useDeleteComment(postId);
+
+  const isOwner = String(currentUser?.id) === String(comment.userId);
+
+  const submitReply = () => {
+    if (!replyContent.trim()) return;
+    addReply(
+      { 
+        commentId: comment.id, 
+        content: `@${comment.authorName} ${replyContent.trim()}` 
+      },
+      { onSuccess: () => { setReplyContent(""); setIsReplying(false); } }
+    );
+  };
+
+  const handleUpdate = () => {
+    if (!editContent.trim()) return;
+    updateComment(
+      { id: comment.id, data: { content: editContent } },
+      { onSuccess: () => setIsEditing(false) }
+    );
+  };
+
+  const confirmDelete = () => {
+    deleteComment(comment.id, {
+      onSuccess: () => setIsDeleteDialogOpen(false),
+      onError: () => {
+        toast.error("Failed to delete comment");
+        setIsDeleteDialogOpen(false);
+      }
+    });
+  };
+
+  const hasReplies = (comment.replies?.length ?? 0) > 0;
+
+  return (
+    <div className="flex flex-col w-full pb-4 pt-4 border-b border-slate-100 last:border-0 relative">
+      <div className="flex gap-2 relative">
+        {(hasReplies || isReplying) && (
+          <div className="absolute left-5 top-10 bottom-0 w-px bg-slate-300 z-0" />
+        )}
+
+        <Avatar className="w-10 h-10 rounded-full border border-slate-200 bg-white z-10 shrink-0 overflow-hidden aspect-square">
+          <AvatarImage src={comment.authorAvatarUrl || undefined} className="object-cover w-full h-full" />
+          <AvatarFallback className="flex items-center justify-center w-full h-full">{comment.authorName?.charAt(0) || "U"}</AvatarFallback>
+        </Avatar>
+
+        <div className="flex flex-col w-full pb-1">
+          <div className="flex items-center justify-between">
+            <div className="text-[14px]">
+              <span className="font-semibold text-slate-900">{comment.authorName}</span>
+              <span className="text-slate-500 ml-1">
+                · {format(safeDate(comment.createdAt), "MMM d, h:mm a")}
+              </span>
+            </div>
+
+            {isOwner && !isEditing && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="text-slate-400 hover:text-slate-700 outline-none p-1">
+                  <MoreHorizontal size={14} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-32 min-w-30">
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} className="text-xs cursor-pointer">
+                    <Pencil size={12} className="mr-2"/> Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-xs text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50">
+                    <Trash2 size={12} className="mr-2"/> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+
+          {isEditing ? (
+            <CommentInput
+              value={editContent}
+              onChange={setEditContent}
+              onSubmit={handleUpdate}
+              isLoading={isUpdating}
+              isEditing
+              hideAvatar
+              onCancelEdit={() => setIsEditing(false)}
+              buttonText="Save"
+            />
+          ) : (
+            <>
+              <p className="text-[14px] text-slate-800 whitespace-pre-wrap mt-1 leading-relaxed">
+                {formatContent(comment.content)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsReplying(!isReplying)}
+                className="flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-slate-800 mt-1.5 self-start transition-colors"
+              >
+                <MessageCircle size={14} /> Reply
+              </button>
+            </>
+          )}
+
+          {hasReplies && (
+            <div className="mt-2 ml-3">
+              {comment.replies?.map((reply) => (
+                <ReplyItem
+                  key={reply.id}
+                  reply={reply}
+                  rootCommentId={comment.id}
+                  postId={postId}
+                  currentUser={currentUser}
+                />
+              ))}
+            </div>
+          )}
+
+          {isReplying && (
+             <div className="mt-3 ml-9 relative">
+               <div className="absolute -left-6 top-4 w-6 h-px bg-slate-300 z-0" />
+               <CommentInput
+                 value={replyContent}
+                 onChange={setReplyContent}
+                 onSubmit={submitReply}
+                 isLoading={isAdding}
+                 avatarUrl={currentUser?.avatarUrl}
+                 mentionPrefix={comment.authorName}
+                 placeholder="Write a reply..."
+                 buttonText="Reply"
+               />
+             </div>
+          )}
+        </div>
+      </div>
+
+      <DeleteConfirmationDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        entityLabel="comment"
+      />
+    </div>
+  );
+};
+
 export default function PostCard({ post }: { post: PostResponseDto }) {
   const { data: session } = useSession();
   const [showComments, setShowComments] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Image Viewer State
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  const [visibleCommentsCount, setVisibleCommentsCount] = useState(3);
 
   const { data: comments, isLoading: isLoadingComments } = usePostComments(showComments ? post.id : 0);
   const { mutate: addComment, isPending: isAddingComment } = useCreateComment();
   const { mutate: deletePost } = useDeletePost();
 
-  const currentUser = session?.user;
+  const currentUser = session?.user as CurrentUser | undefined;
   const isOwner = String(currentUser?.id) === String(post.user.id);
   const isAdmin = currentUser?.role === "ADMIN";
   const canManage = isOwner || isAdmin;
+  
+  const totalComments = calculateTotalCommentCount(comments);
 
-  const handleAddComment = (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const submitPostComment = () => {
     if (!newComment.trim()) return;
     addComment({ postId: post.id, content: newComment.trim() }, { onSuccess: () => setNewComment("") });
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this post?")) deletePost(post.id);
+  const confirmDeletePost = () => {
+    deletePost(post.id, {
+      onSuccess: () => setIsDeleteDialogOpen(false),
+      onError: () => {
+        toast.error("Failed to delete post");
+        setIsDeleteDialogOpen(false);
+      }
+    });
   };
 
-  const isLost = post.type === "LOST";
+  // Move declarations BEFORE they are used in useEffect
+  // Wrap in useCallback to prevent them from constantly redefining on re-renders
+  const nextImage = useCallback(() => {
+    setActiveImageIndex((prev) => Math.min(prev + 1, (post.images?.length || 1) - 1));
+  }, [post.images?.length]);
+
+  const prevImage = useCallback(() => {
+    setActiveImageIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  // Prevent background scrolling when lightbox is open
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => { document.body.style.overflow = "unset"; };
+  }, [isFullscreen]);
+
+  // Keyboard navigation for Lightbox
+  useEffect(() => {
+    if (!isFullscreen || !post.images) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsFullscreen(false);
+      if (e.key === "ArrowLeft") prevImage();
+      if (e.key === "ArrowRight") nextImage();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen, post.images, nextImage, prevImage]);
+
+  const isLost = post.type?.toUpperCase() === 'LOST';
+  const typeStyles = isLost 
+    ? "bg-red-50 text-red-600 border-red-100" 
+    : "bg-emerald-50 text-emerald-600 border-emerald-100";
+
+  const displayedComments = comments?.slice(0, visibleCommentsCount) || [];
+  const hasMoreComments = (comments?.length || 0) > visibleCommentsCount;
 
   return (
     <>
-      <Card className="w-full shadow-sm border-slate-200 bg-white overflow-hidden rounded-xl">
+      <Card className="w-full shadow-sm border border-slate-200 bg-white rounded-none sm:rounded-none mb-6 overflow-hidden">
         
-        {/* HEADER */}
-        <CardHeader className="flex flex-row items-start justify-between p-4 pb-2">
-          <div className="flex gap-3">
-            <Avatar>
-              <AvatarImage src={post.user?.avatarUrl || undefined} alt={post.user?.displayName} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                {post.user?.displayName?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
+        <div className="p-4 sm:p-5 flex flex-row items-start justify-between">
+          <div className="flex gap-3 sm:gap-4 items-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+              <Avatar className="w-full h-full rounded-full ring-1 ring-slate-100 overflow-hidden aspect-square">
+                <AvatarImage src={post.user?.avatarUrl || undefined} alt={post.user?.displayName} className="object-cover w-full h-full" />
+                <AvatarFallback className="flex items-center justify-center bg-slate-50 text-slate-700 font-medium w-full h-full">
+                  {post.user?.displayName?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-slate-900">{post.user?.displayName || "Unknown User"}</span>
-              <span className="text-xs text-slate-500 font-medium">{format(new Date(post.lostFoundDate), "MMM d, yyyy")}</span>
+              <span className="font-semibold text-[15px] text-slate-900 leading-tight">{post.user?.displayName || "Unknown User"}</span>
+              <span className="text-[13px] text-slate-500 leading-tight mt-1">
+                {format(safeDate(post.createdAt), "MMM d, yyyy · h:mm a")}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-start gap-2">
-            <div className="text-right">
-              <p className="text-xs font-semibold text-slate-500">Category: <span className="text-slate-800">{post.category?.name}</span></p>
-              <span className={`inline-block mt-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${isLost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                {post.type}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-0.5 text-[11px] font-semibold border uppercase tracking-wider rounded-full ${typeStyles}`}>
+              {post.type}
+            </span>
+            <span className="px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 uppercase tracking-wider rounded-full hidden sm:inline-block">
+              {post.category?.name}
+            </span>
             
-            {/* 3-Dot Menu */}
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700 -mr-2 transition-colors outline-none">
-                <MoreVertical size={18} />
+              <DropdownMenuTrigger className="text-slate-400 hover:text-slate-700 hover:bg-slate-50 p-1.5 ml-1 transition-colors outline-none rounded-full flex items-center justify-center">
+                <MoreHorizontal size={20} />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl">
+              <DropdownMenuContent align="end" className="w-44 rounded-xl border-slate-100 shadow-md p-1">
                 {isOwner && (
-                  <DropdownMenuItem onClick={() => setIsEditModalOpen(true)} className="cursor-pointer">
-                    <Pencil size={14} className="mr-2" /> Update
+                  <DropdownMenuItem onClick={() => setIsEditModalOpen(true)} className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50">
+                    <Pencil size={14} className="mr-2" /> Edit Post
                   </DropdownMenuItem>
                 )}
                 {canManage && (
-                  <DropdownMenuItem onClick={handleDelete} className="cursor-pointer text-red-600 focus:text-red-600">
+                  <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-red-600 focus:text-red-600 rounded-lg font-medium py-2 px-3 focus:bg-red-50">
                     <Trash2 size={14} className="mr-2" /> Delete
                   </DropdownMenuItem>
                 )}
                 {!isOwner && (
-                  <DropdownMenuItem onClick={() => alert("Report feature coming soon!")} className="cursor-pointer text-orange-600 focus:text-orange-600">
+                  <DropdownMenuItem onClick={() => alert("Report feature coming soon!")} className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50">
                     <Flag size={14} className="mr-2" /> Report
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </CardHeader>
+        </div>
 
-        {/* CONTENT */}
-        <CardContent className="p-4 pt-1">
-          <h3 className="font-bold text-xl mb-2 text-slate-900">{post.title}</h3>
-          <p className="text-sm text-slate-700 whitespace-pre-wrap mb-4 leading-relaxed">{post.description}</p>
+        <div className="px-4 sm:px-5 pb-2">
+          <h3 className="font-semibold text-xl mb-2 text-slate-900 leading-snug">{post.title}</h3>
+          <p className="text-[15px] text-slate-800 whitespace-pre-wrap mb-4 leading-relaxed">{post.description}</p>
           
-          <div className="flex flex-wrap gap-2 mb-4">
-            {/* Clickable Map Location Tag */}
-            <div 
-              onClick={() => setShowMap(!showMap)}
-              className="flex items-start gap-1.5 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 wrap-break-word max-w-full cursor-pointer hover:bg-blue-100 transition-colors shadow-sm"
-            >
-              <MapPin size={14} className="shrink-0 mt-0.5 text-blue-600" />
-              <span className="leading-snug">
-                {post.city} - {post.locationDetails} 
-                <span className="text-blue-600 font-bold ml-1">({showMap ? 'Hide' : 'View'} Map)</span>
-              </span>
+          <div className="rounded-none border border-slate-100 bg-slate-50/50 p-4 mb-4 flex flex-col gap-3 text-[14px] text-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+               <span className="font-medium text-slate-500 shrink-0 w-16">Location</span>
+               <span className="flex-1 text-slate-900">{post.city} - {post.locationDetails}</span>
+               {post.latitude && post.longitude && (
+                 <button 
+                   onClick={() => setShowMap(!showMap)}
+                   className="mt-1 sm:mt-0 font-medium text-xs text-slate-900 hover:text-slate-700 hover:bg-slate-200 px-2 py-1 rounded-md transition-colors shrink-0 inline-flex items-center gap-1"
+                 >
+                   <MapPin size={14} /> {showMap ? 'Hide Map' : 'View Map'}
+                 </button>
+               )}
             </div>
             
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700">
-              <Phone size={14} className="text-slate-400" />
-              {post.contactInfo}
-            </div>
+            {post.contactInfo && (
+              <div className="flex items-start gap-2">
+                 <span className="font-medium text-slate-500 shrink-0 w-16">Contact</span>
+                 <span className="text-slate-900">{post.contactInfo}</span>
+              </div>
+            )}
             
             {(post.reward ?? 0) > 0 && (
-               <div className="flex items-center gap-1.5 bg-yellow-50 border border-yellow-200 text-yellow-700 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                 <Gift size={14} />
-                 Reward: ${post.reward}
+               <div className="flex items-start gap-2 pt-3 border-t border-slate-100 mt-1">
+                 <span className="font-medium text-slate-500 shrink-0 w-16">Reward</span>
+                 <span className="font-semibold text-emerald-600">${post.reward}</span>
                </div>
             )}
           </div>
 
-          {/* Map View Toggle */}
           {showMap && post.latitude && post.longitude && (
-            <div className="mb-4 mt-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-4 rounded-none overflow-hidden border border-slate-100 animate-in fade-in duration-200">
                <MapDisplay lat={post.latitude} lon={post.longitude} name={post.locationDetails} />
             </div>
           )}
 
-          {/* Post Images */}
           {post.images && post.images.length > 0 && (
-            <div className={`grid gap-1.5 mt-2 rounded-xl overflow-hidden ${post.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {post.images.slice(0, 4).map((img, index) => (
-                <div key={img.id} className={`relative aspect-square ${post.images.length === 3 && index === 0 ? 'col-span-2' : ''}`}>
-                  <Image src={img.url} alt="Post image" fill className="object-cover hover:opacity-95 transition-opacity cursor-pointer border border-slate-100" />
+            <div className="relative w-full aspect-square sm:aspect-video border border-slate-100 bg-slate-100 rounded-none overflow-hidden group mb-4">
+              {post.images.map((img, index) => (
+                <div 
+                  key={img.id || index}
+                  onClick={() => setIsFullscreen(true)}
+                  className={`absolute inset-0 cursor-pointer transition-opacity duration-300 ${index === activeImageIndex ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
+                >
+                  <Image 
+                    src={img.url} 
+                    alt={`Post image ${index + 1}`} 
+                    fill 
+                    className="object-cover hover:scale-[1.01] transition-transform duration-500" 
+                    sizes="(max-w-768px) 100vw, 800px"
+                    priority={index === 0}
+                  />
                 </div>
               ))}
+
+              {post.images.length > 1 && (
+                <>
+                  <Button 
+                    variant="ghost" 
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 p-0 bg-white/80 text-slate-900 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0" 
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                    disabled={activeImageIndex === 0}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 p-0 bg-white/80 text-slate-900 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0" 
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                    disabled={activeImageIndex === post.images.length - 1}
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                  
+                  <div className="absolute bottom-3 right-3 z-20 bg-slate-900/70 text-white px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-sm backdrop-blur-sm pointer-events-none">
+                    {activeImageIndex + 1} / {post.images.length}
+                  </div>
+                </>
+              )}
             </div>
           )}
-        </CardContent>
-
-        {/* Action Bar */}
-        <div className="px-4 py-1 border-t border-slate-100 flex justify-between gap-1">
-          <Button variant="ghost" className="flex-1 text-slate-500 hover:text-slate-800 font-semibold rounded-lg">
-            <ThumbsUp size={18} className="mr-2" /> Like
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="flex-1 text-slate-500 hover:text-slate-800 font-semibold rounded-lg"
-            onClick={() => setShowComments(!showComments)}
-          >
-            <MessageCircle size={18} className="mr-2" /> Command
-          </Button>
-          <Button variant="ghost" className="flex-1 text-slate-500 hover:text-slate-800 font-semibold rounded-lg">
-            <Share2 size={18} className="mr-2" /> Share
-          </Button>
         </div>
 
-        {/* COMMENTS SECTION */}
+        <div className="px-2 py-1.5 border-t border-slate-100 flex items-center justify-around sm:justify-start sm:gap-6">
+          <button className={`flex items-center gap-2 font-medium text-[14px] transition-colors rounded-full px-4 py-2 group ${post.liked ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}>
+            <ThumbsUp size={18} className="group-hover:-translate-y-0.5 transition-transform" /> 
+            Like {post.LikeCount > 0 ? `(${post.LikeCount})` : ''}
+          </button>
+          <button 
+            className={`flex items-center gap-2 font-medium text-[14px] transition-colors rounded-full px-4 py-2 group ${showComments ? 'text-slate-800' : 'text-slate-500 hover:text-slate-800'}`}
+            onClick={() => setShowComments(!showComments)}
+          >
+            <MessageCircle size={18} className="group-hover:-translate-y-0.5 transition-transform" /> 
+            Comment {totalComments > 0 ? `(${totalComments})` : ''}
+          </button>
+          <button className="flex items-center gap-2 text-slate-500 font-medium text-[14px] hover:text-slate-800 transition-colors rounded-full px-4 py-2 group">
+            <Share2 size={18} className="group-hover:-translate-y-0.5 transition-transform" /> Share
+          </button>
+        </div>
+
         {showComments && (
-          <div className="w-full pt-4 px-4 pb-4 border-t border-slate-100 bg-slate-50/50 animate-in fade-in slide-in-from-top-2">
-            <div className="space-y-4 max-h-100 overflow-y-auto pr-2 pb-2">
+          <div className="flex flex-col w-full bg-slate-50/20 border-t border-slate-100">
+            <div className="max-h-100 overflow-y-auto block pr-2 px-4 sm:px-5 pt-4">
               {isLoadingComments ? (
-                <p className="text-center text-xs text-slate-400 py-2">Loading comments...</p>
+                <p className="text-center text-[13px] text-slate-400 py-6 font-medium">Loading comments...</p>
               ) : comments?.length === 0 ? (
-                <p className="text-center text-xs text-slate-400 py-2">No commands yet. Be the first!</p>
+                <p className="text-center text-[13px] text-slate-400 py-6 font-medium">No comments yet. Be the first to reply!</p>
               ) : (
-                comments?.map((comment) => (
-                  <CommentThread key={comment.id} comment={comment} postId={post.id} />
-                ))
+                <div className="flex flex-col">
+                  {displayedComments.map((comment) => (
+                    <CommentThread key={comment.id} comment={comment} postId={post.id} currentUser={currentUser} />
+                  ))}
+                  
+                  {hasMoreComments && (
+                    <button
+                      onClick={() => setVisibleCommentsCount(prev => prev + 5)}
+                      className="w-fit text-left py-2 px-1 text-[13px] font-medium text-slate-500 hover:text-slate-800 transition-colors mb-2"
+                    >
+                      Show more comments
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             
-            <form onSubmit={handleAddComment} className="flex gap-2 pt-3 mt-1 border-t border-slate-200">
-               <Avatar className="w-9 h-9 mt-0.5">
-                  <AvatarImage src={currentUser?.avatarUrl || undefined} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs">Me</AvatarFallback>
-               </Avatar>
-               <Input 
-                 placeholder="Write a command..." 
-                 value={newComment}
-                 onChange={(e) => setNewComment(e.target.value)}
-                 className="flex-1 rounded-full h-10 bg-white border-slate-200 focus-visible:ring-1 shadow-sm"
-                 disabled={isAddingComment}
-               />
-               <Button type="submit" className="rounded-full px-5 h-10 font-bold" disabled={!newComment.trim() || isAddingComment}>
-                 Post
-               </Button>
-            </form>
+            <div className="px-4 sm:px-5 py-4 border-t border-slate-100 bg-white mt-auto">
+              <CommentInput
+                value={newComment}
+                onChange={setNewComment}
+                onSubmit={submitPostComment}
+                isLoading={isAddingComment}
+                avatarUrl={currentUser?.avatarUrl}
+                placeholder="Add a comment..."
+              />
+            </div>
           </div>
         )}
       </Card>
 
-      {/* Edit Modal Component */}
+      {/* Lightbox / Fullscreen Image Viewer */}
+      {isFullscreen && post.images && post.images.length > 0 && (
+        <div 
+          className="fixed inset-0 z-99999 bg-black/95 flex items-center justify-center backdrop-blur-md"
+          onClick={() => setIsFullscreen(false)}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/70 hover:text-white p-2 z-100000 transition-colors rounded-full hover:bg-white/10"
+          >
+            <X size={28} />
+          </button>
+
+          {/* Navigation - Left */}
+          {post.images.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); prevImage(); }}
+              disabled={activeImageIndex === 0}
+              className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-0 p-3 sm:p-4 z-100000 transition-colors rounded-full hover:bg-white/10"
+            >
+              <ChevronLeft size={36} />
+            </button>
+          )}
+
+          {/* Navigation - Right */}
+          {post.images.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); nextImage(); }}
+              disabled={activeImageIndex === post.images.length - 1}
+              className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-0 p-3 sm:p-4 z-100000 transition-colors rounded-full hover:bg-white/10"
+            >
+              <ChevronRight size={36} />
+            </button>
+          )}
+
+          {/* Image Container */}
+          <div 
+            className="relative w-full h-full max-h-[90vh] max-w-6xl mx-auto flex items-center justify-center p-4 sm:p-16"
+            onClick={(e) => e.stopPropagation()} // Prevent clicks on image from closing lightbox
+          >
+            <Image 
+              src={post.images[activeImageIndex].url} 
+              alt={`Fullscreen post image ${activeImageIndex + 1}`} 
+              fill 
+              className="object-contain" 
+              sizes="100vw"
+              priority
+            />
+          </div>
+
+          {/* Counter */}
+          {post.images.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 font-medium tracking-wide bg-black/50 px-4 py-1.5 rounded-full text-sm">
+              {activeImageIndex + 1} / {post.images.length}
+            </div>
+          )}
+        </div>
+      )}
+
       {isEditModalOpen && (
         <PostFormModal 
           open={isEditModalOpen} 
@@ -293,6 +733,14 @@ export default function PostCard({ post }: { post: PostResponseDto }) {
           postToEdit={post} 
         />
       )}
+
+      <DeleteConfirmationDialog 
+        open={isDeleteDialogOpen} 
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={confirmDeletePost}
+        entityLabel="post"
+        itemName={post.title}
+      />
     </>
   );
 }

@@ -8,8 +8,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <DashboardHeader 
-        title="My Dashboard" 
+      <DashboardHeader
+        title="My Dashboard"
         description={`Welcome back, ${session?.user?.displayName}`}
       />
 

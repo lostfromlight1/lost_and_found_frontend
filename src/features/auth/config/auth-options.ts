@@ -1,78 +1,68 @@
 import { NextAuthOptions, User } from "next-auth";
+import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { JWT } from "next-auth/jwt";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+import { AuthResponse } from "@/features/auth/api/response/auth.response";
+import { LoginRequest } from "@/features/auth/api/request/auth.request";
 
-interface BackendAuthData {
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
+
+type AuthUser = {
   id: number;
   email: string;
   displayName: string;
-  contactInfo: string;
+  contactInfo?: string | null;
   role: "USER" | "ADMIN";
   avatarUrl?: string | null;
   avatarPublicId?: string | null;
+  isLocked?: boolean;
+};
+
+type ExtendedUser = AuthUser & {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
-  isLocked?: boolean;
-}
+};
 
-type SessionUser = Omit<BackendAuthData, "accessToken" | "refreshToken" | "expiresIn">;
+async function apiPost<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_URL}${url}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-KEY": API_KEY,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const json = await res.json();
+  if (!res.ok || !json.data) {
+    throw new Error(json.message || "API Error");
+  }
+  return json.data;
+}
 
 let refreshPromise: Promise<JWT> | null = null;
 
-// --- DEFENSIVE FETCH HELPER ---
-// Prevents JSON.parse from crashing if Spring Boot returns an HTML error page.
-async function safeFetchJson(url: string, options: RequestInit) {
-  const res = await fetch(url, options);
-  const contentType = res.headers.get("content-type");
-  
-  if (contentType && contentType.includes("application/json")) {
-    return { ok: res.ok, status: res.status, json: await res.json() };
-  }
-  
-  const text = await res.text();
-  console.error(`🚨 [Backend Error] Expected JSON from ${url} but got HTML/Text. Status: ${res.status}`);
-  console.error(`🚨 [Backend Response Body]:`, text.substring(0, 300)); 
-  throw new Error(`Server returned an invalid response (Status: ${res.status})`);
-}
-
 async function refreshAccessToken(token: JWT): Promise<JWT> {
-  if (refreshPromise) {
-    return refreshPromise;
-  }
+  if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
     try {
-      const response = await safeFetchJson(`${API_URL}/auth/refresh`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-API-KEY": API_KEY,
-        },
-        body: JSON.stringify({ refreshToken: token.refreshToken })
+      const data = await apiPost<AuthResponse>("/auth/refresh", {
+        refreshToken: token.refreshToken,
       });
 
-      if (!response.ok || !response.json?.data) {
-        throw new Error("RefreshAccessTokenError");
-      }
+      token.accessToken = data.accessToken;
+      token.refreshToken = data.refreshToken ?? token.refreshToken;
+      token.expiresAt = Date.now() + Number(data.expiresIn);
+      token.error = undefined;
 
-      const { accessToken, refreshToken, expiresIn } = response.json.data;
-
-      return {
-        ...token,
-        accessToken: accessToken,
-        refreshToken: refreshToken ?? token.refreshToken,
-        expiresAt: Date.now() + Number(expiresIn), 
-      } as JWT;
+      return token;
     } catch {
-      return {
-        ...token,
-        error: "RefreshAccessTokenError",
-      } as JWT;
+      token.error = "RefreshAccessTokenError";
+      return token;
     } finally {
       refreshPromise = null;
     }
@@ -82,116 +72,104 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 }
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60,
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      httpOptions: { timeout: 10000 },
     }),
     CredentialsProvider({
       name: "Credentials",
-      credentials: { email: { type: "email" }, password: { type: "password" } },
+      credentials: {
+        email: { type: "email" },
+        password: { type: "password" },
+      },
       async authorize(credentials) {
-        try {
-          const response = await safeFetchJson(`${API_URL}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-API-KEY": API_KEY },
-            body: JSON.stringify(credentials),
-          });
-          
-          if (response.ok && response.json?.data) {
-            const { accessToken, refreshToken, expiresIn, user } = response.json.data;
-            return {
-              ...user,
-              id: Number(user.id),
-              accessToken,
-              refreshToken,
-              expiresIn: Number(expiresIn),
-            } as unknown as User;
-          }
-          throw new Error(response.json?.message || "Invalid credentials");
-        } catch (error: unknown) {
-          if (error instanceof Error) throw new Error(error.message);
-          throw new Error("Unable to connect to the server.");
-        }
+        if (!credentials) throw new Error("Missing credentials");
+
+        const data = await apiPost<AuthResponse>(
+          "/auth/login",
+          credentials as LoginRequest
+        );
+
+        return {
+          ...data.user,
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          expiresIn: data.expiresIn,
+        } as unknown as User;
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
-      
-      // 1. Handle manual session updates (Profile changes / Avatar uploads)
-      if (trigger === "update" && session) {
-        token.user = { 
-          ...(token.user as SessionUser), 
-          ...(session.user || session) 
+      if (trigger === "update" && session?.user) {
+        token.user = { ...token.user, ...session.user };
+        return token;
+      }
+
+      // 1. Google Login: Map backend response to token
+      if (account?.provider === "google" && account.id_token) {
+        const data = await apiPost<AuthResponse>("/auth/google", { idToken: account.id_token });
+        token.accessToken = data.accessToken;
+        token.refreshToken = data.refreshToken;
+        token.expiresAt = Date.now() + Number(data.expiresIn);
+        token.user = data.user; // data.user is AuthUser type
+        return token;
+      }
+
+      // 2. Credentials Login: Map ExtendedUser to token
+      if (user) {
+        const u = user as ExtendedUser;
+        token.accessToken = u.accessToken;
+        token.refreshToken = u.refreshToken;
+        token.expiresAt = Date.now() + Number(u.expiresIn);
+
+        // CLEAN FIX: Explicitly map only AuthUser fields. 
+        // Prevents u.accessToken and u.refreshToken from being duplicated in token.user.
+        token.user = {
+          id: u.id,
+          email: u.email,
+          displayName: u.displayName,
+          contactInfo: u.contactInfo,
+          role: u.role,
+          avatarUrl: u.avatarUrl,
+          avatarPublicId: u.avatarPublicId,
+          isLocked: u.isLocked,
         };
         return token;
       }
 
-      // 2. Google Login
-      if (account?.provider === "google" && account.id_token) {
-        try {
-          const response = await safeFetchJson(`${API_URL}/auth/google`, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json", 
-              "X-API-KEY": API_KEY 
-            },
-            body: JSON.stringify({ idToken: account.id_token }),
-          });
-
-          if (response.ok && response.json?.data) {
-            const { accessToken, refreshToken, expiresIn, user: backendUser } = response.json.data;
-            return {
-              ...token,
-              accessToken,
-              refreshToken,
-              expiresAt: Date.now() + Number(expiresIn),
-              user: {
-                id: Number(backendUser.id),
-                email: backendUser.email,
-                displayName: backendUser.displayName,
-                contactInfo: backendUser.contactInfo || "",
-                role: backendUser.role,
-                avatarUrl: backendUser.avatarUrl,
-                avatarPublicId: backendUser.avatarPublicId,
-                isLocked: backendUser.isLocked,
-              }
-            } as JWT;
-          } else {
-             throw new Error("OAuthAccountCollision");
-          }
-        } catch { 
-          throw new Error("OAuthCallbackError"); 
-        }
-      }
-
-      // 3. Credentials Login
-      if (user) {
-        const customUser = user as unknown as BackendAuthData;
-        return {
-          ...token,
-          accessToken: customUser.accessToken,
-          refreshToken: customUser.refreshToken,
-          expiresAt: Date.now() + Number(customUser.expiresIn),
-          user: { ...customUser },
-        } as JWT;
-      }
-
-      // 4. Silent Refresh Logic
-      if (Date.now() < (token.expiresAt as number) - 60000) {
+      // 3. Prevent refresh if already failed
+      if (token.error === "RefreshAccessTokenError") {
         return token;
       }
 
-      return refreshAccessToken(token);
+      // 4. Proactive Refresh: 30s window to cooperate with Axios interceptor
+      const shouldRefresh = token.expiresAt && Date.now() > (token.expiresAt as number) - 30_000;
+
+      if (shouldRefresh) {
+        return refreshAccessToken(token);
+      }
+
+      return token;
     },
+
     async session({ session, token }) {
-      session.user = { ...session.user, ...(token.user as SessionUser) };
+      // Use AuthUser type to satisfy ESLint without using 'any'
+      session.user = { 
+        ...session.user, 
+        ...(token.user as AuthUser) 
+      };
+
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
       session.error = token.error as "RefreshAccessTokenError" | undefined;
+      
       return session;
     },
   },
