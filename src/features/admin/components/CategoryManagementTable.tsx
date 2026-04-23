@@ -10,6 +10,7 @@ import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialo
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import InputForm from "@/components/form/InputForm";
+import { Pencil, Trash2 } from "lucide-react"; // <-- ADDED ICONS
 import { CategoryResponse } from "@/features/categories/api/response/categories.response";
 import {
   useCategories,
@@ -27,33 +28,28 @@ type CategoryFormValues = z.infer<typeof categorySchema>;
 export function CategoryManagementTable() {
   const [search, setSearch] = useState("");
   
-  // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [categoryToEdit, setCategoryToEdit] = useState<CategoryResponse | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryResponse | null>(null);
 
-  // Queries & Mutations
   const { data: categories, isLoading } = useCategories();
   const { mutate: createCat, isPending: isCreating } = useCreateCategory();
   const { mutate: editCat, isPending: isEditing } = useEditCategory();
   const { mutate: deleteCat, isPending: isDeleting } = useDeleteCategory();
 
-  // Form Setup
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: { name: "" },
   });
 
-  // Reset form when modal opens/closes or edit target changes
   useEffect(() => {
     if (isFormOpen) {
       form.reset({ name: categoryToEdit ? categoryToEdit.name : "" });
     } else {
-      setTimeout(() => form.reset({ name: "" }), 200); // Clear after close animation
+      setTimeout(() => form.reset({ name: "" }), 200); 
     }
   }, [isFormOpen, categoryToEdit, form]);
 
-  // Handle Form Submit
   const onSubmit = (values: CategoryFormValues) => {
     if (categoryToEdit) {
       editCat(
@@ -65,7 +61,6 @@ export function CategoryManagementTable() {
     }
   };
 
-  // Handle Delete
   const handleConfirmDelete = () => {
     if (categoryToDelete) {
       deleteCat(categoryToDelete.id, {
@@ -74,7 +69,6 @@ export function CategoryManagementTable() {
     }
   };
 
-  // Filter Data Client-Side (Since backend getCategories doesn't have a search param)
   const filteredCategories = (categories || []).filter((cat) =>
     cat.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -85,25 +79,31 @@ export function CategoryManagementTable() {
     {
       key: "actions",
       header: "Actions",
+      width: 120,
+      className: "text-center", // <-- CENTERED HEADER
       render: (_, row) => (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1 justify-end"> {/* <-- RIGHT ALIGNED ICONS */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
             onClick={() => {
               setCategoryToEdit(row);
               setIsFormOpen(true);
             }}
+            title="Edit Category"
           >
-            Edit
+            <Pencil size={16} />
           </Button>
           <Button
-            variant="destructive"
+            variant="ghost"
             size="sm"
+            className="text-red-500 hover:text-red-700 hover:bg-red-50"
             disabled={isDeleting && categoryToDelete?.id === row.id}
             onClick={() => setCategoryToDelete(row)}
+            title="Delete Category"
           >
-            {isDeleting && categoryToDelete?.id === row.id ? "..." : "Delete"}
+            <Trash2 size={16} />
           </Button>
         </div>
       ),
@@ -126,7 +126,6 @@ export function CategoryManagementTable() {
         }}
       />
 
-      {/* CREATE / EDIT MODAL */}
       <FormModal
         open={isFormOpen}
         onOpenChange={(open) => {
@@ -151,7 +150,6 @@ export function CategoryManagementTable() {
         </Form>
       </FormModal>
 
-      {/* DELETE CONFIRMATION */}
       <DeleteConfirmationDialog
         open={!!categoryToDelete}
         onOpenChange={(open) => !open && setCategoryToDelete(null)}

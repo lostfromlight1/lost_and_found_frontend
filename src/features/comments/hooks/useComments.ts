@@ -8,7 +8,7 @@ import {
   createReplyService,
   updateCommentService,
   deleteCommentService,
-updateReplyService,
+  updateReplyService,
   deleteReplyService
 } from "../services/comments.service";
 import { CreateCommentRequest, CreateReplyRequest, UpdateCommentRequest } from "../api/request/comments.request";
@@ -94,6 +94,8 @@ export const useUpdateComment = (postId: number) => {
     onSuccess: () => {
       toast.success("Comment updated successfully");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });
@@ -107,6 +109,8 @@ export const useDeleteComment = (postId: number) => {
     onSuccess: () => {
       toast.success("Comment deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });
@@ -120,6 +124,8 @@ export const useUpdateReply = (postId: number) => {
     onSuccess: () => {
       toast.success("Reply updated successfully");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });
@@ -133,6 +139,8 @@ export const useDeleteReply = (postId: number) => {
     onSuccess: () => {
       toast.success("Reply deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["comments", postId] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });

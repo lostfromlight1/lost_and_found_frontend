@@ -6,13 +6,13 @@ import DeleteConfirmationDialog from "@/components/model/DeleteConfirmationDialo
 import { useUsers, useBanUser, useUnbanUser } from "@/features/users/hooks/useUsers";
 import { UserResponse } from "@/features/auth/api/response/auth.response";
 import { Button } from "@/components/ui/button";
+import { Lock, Unlock } from "lucide-react"; // <-- ADDED ICONS
 import { cn } from "@/lib/utils";
 
 export function UserManagementTable() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   
-  // State to track which user is being acted upon
   const [userToToggle, setUserToToggle] = useState<UserResponse | null>(null);
 
   const { data, isLoading } = useUsers(search, page);
@@ -49,7 +49,7 @@ export function UserManagementTable() {
       header: "Role", 
       render: (val) => (
         <span className={cn(
-          "px-2 py-1 rounded text-xs font-semibold", 
+          "px-2 py-1 rounded-full text-[10px] font-bold", 
           val === 'ADMIN' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
         )}>
           {val as string}
@@ -59,17 +59,23 @@ export function UserManagementTable() {
     { 
       key: "actions", 
       header: "Actions", 
+      width: 120,
+      className: "text-center", // <-- CENTERED HEADER
       render: (_, row) => (
-        <Button 
-          variant={row.isLocked ? "outline" : "destructive"} 
-          size="sm" 
-          disabled={row.role === "ADMIN" || (isActionPending && userToToggle?.id === row.id)} 
-          onClick={() => setUserToToggle(row)}
-        >
-          {isActionPending && userToToggle?.id === row.id 
-            ? "Processing..." 
-            : row.isLocked ? "Unban" : "Ban"}
-        </Button>
+        <div className="flex items-center gap-1 justify-end"> {/* <-- RIGHT ALIGNED ICONS */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className={row.isLocked 
+              ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" 
+              : "text-red-500 hover:text-red-700 hover:bg-red-50"}
+            disabled={row.role === "ADMIN" || (isActionPending && userToToggle?.id === row.id)} 
+            onClick={() => setUserToToggle(row)}
+            title={row.isLocked ? "Unban User" : "Ban User"}
+          >
+            {row.isLocked ? <Unlock size={16} /> : <Lock size={16} />}
+          </Button>
+        </div>
       )
     }
   ];

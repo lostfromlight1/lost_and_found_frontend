@@ -1,5 +1,6 @@
 import { api as apiClient } from "@/lib/api/axios";
 import { CreateCommentRequest, CreateReplyRequest, UpdateCommentRequest } from "./request/comments.request";
+import { CommentResponse } from "./response/comments.response";
 
 export const getCommentsByPostApi = async (postId: number) => {
   return await apiClient.get(`/comments/post/${postId}`);
@@ -27,4 +28,8 @@ export const updateReplyApi = async (id: number, data: UpdateCommentRequest) => 
 
 export const deleteReplyApi = async (id: number) => {
   return await apiClient.delete(`/replies/${id}`);
+};
+
+export const getCommentByIdApi = async (id: number): Promise<CommentResponse> => {
+  return await apiClient.get(`/comments/${id}`);
 };

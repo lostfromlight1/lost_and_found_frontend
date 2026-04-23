@@ -6,7 +6,9 @@ import GoogleProvider from "next-auth/providers/google";
 import { AuthResponse } from "@/features/auth/api/response/auth.response";
 import { LoginRequest } from "@/features/auth/api/request/auth.request";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "";
 
 type AuthUser = {
@@ -37,9 +39,11 @@ async function apiPost<T>(url: string, body: unknown): Promise<T> {
   });
 
   const json = await res.json();
+
   if (!res.ok || !json.data) {
     throw new Error(json.message || "API Error");
   }
+
   return json.data;
 }
 
@@ -76,17 +80,20 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60,
   },
+
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+
     CredentialsProvider({
       name: "Credentials",
       credentials: {
         email: { type: "email" },
         password: { type: "password" },
       },
+
       async authorize(credentials) {
         if (!credentials) throw new Error("Missing credentials");
 
@@ -112,44 +119,28 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      // 1. Google Login: Map backend response to token
       if (account?.provider === "google" && account.id_token) {
         const data = await apiPost<AuthResponse>("/auth/google", { idToken: account.id_token });
         token.accessToken = data.accessToken;
         token.refreshToken = data.refreshToken;
         token.expiresAt = Date.now() + Number(data.expiresIn);
-        token.user = data.user; // data.user is AuthUser type
+        token.user = data.user;
         return token;
       }
 
-      // 2. Credentials Login: Map ExtendedUser to token
       if (user) {
         const u = user as ExtendedUser;
         token.accessToken = u.accessToken;
         token.refreshToken = u.refreshToken;
         token.expiresAt = Date.now() + Number(u.expiresIn);
-
-        // CLEAN FIX: Explicitly map only AuthUser fields. 
-        // Prevents u.accessToken and u.refreshToken from being duplicated in token.user.
-        token.user = {
-          id: u.id,
-          email: u.email,
-          displayName: u.displayName,
-          contactInfo: u.contactInfo,
-          role: u.role,
-          avatarUrl: u.avatarUrl,
-          avatarPublicId: u.avatarPublicId,
-          isLocked: u.isLocked,
-        };
+        token.user = { ...u }; 
         return token;
       }
 
-      // 3. Prevent refresh if already failed
       if (token.error === "RefreshAccessTokenError") {
         return token;
       }
 
-      // 4. Proactive Refresh: 30s window to cooperate with Axios interceptor
       const shouldRefresh = token.expiresAt && Date.now() > (token.expiresAt as number) - 30_000;
 
       if (shouldRefresh) {
@@ -160,7 +151,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      // Use AuthUser type to satisfy ESLint without using 'any'
       session.user = { 
         ...session.user, 
         ...(token.user as AuthUser) 
@@ -171,7 +161,6 @@ export const authOptions: NextAuthOptions = {
       session.error = token.error as "RefreshAccessTokenError" | undefined;
       
       return session;
-    },
-  },
+    },  },
   pages: { signIn: "/login" },
 };

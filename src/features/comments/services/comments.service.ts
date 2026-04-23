@@ -5,6 +5,7 @@ import {
   updateCommentApi,
   deleteCommentApi,
   updateReplyApi,
+  getCommentByIdApi,
   deleteReplyApi
 } from "../api/comments.api";
 import { CreateCommentRequest, CreateReplyRequest, UpdateCommentRequest } from "../api/request/comments.request";
@@ -41,4 +42,8 @@ export const updateReplyService = async (id: number, data: UpdateCommentRequest)
 
 export const deleteReplyService = async (id: number): Promise<void> => {
   await deleteReplyApi(id);
+};
+
+export const getCommentByIdService = async (id: number): Promise<CommentResponse> => {
+  return await getCommentByIdApi(id);
 };

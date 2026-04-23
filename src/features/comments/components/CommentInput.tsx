@@ -86,23 +86,23 @@ export default function CommentInput({
   };
 
   return (
-    <div className={`flex items-start gap-3 relative px-4 py-3 ${isEditing ? "bg-muted/50 rounded-xl" : "bg-transparent"}`}>
+    <div className={`flex items-start gap-2 relative px-3 py-2 ${isEditing ? "bg-muted/50 rounded-xl" : "bg-transparent"}`}>
       {/* Avatar */}
       {!hideAvatar && (
-        <Avatar className="w-10 h-10 rounded-full shrink-0 mt-1 cursor-pointer hover:opacity-90 transition-opacity">
+        <Avatar className="w-8 h-8 rounded-full shrink-0 mt-0.5 cursor-pointer hover:opacity-90 transition-opacity">
           <AvatarImage src={avatarUrl || undefined} className="object-cover" />
-          <AvatarFallback className="text-sm font-bold bg-muted text-muted-foreground">ME</AvatarFallback>
+          <AvatarFallback className="text-[10px] font-bold bg-muted text-muted-foreground">ME</AvatarFallback>
         </Avatar>
       )}
 
-      <div className="flex-1 min-w-0 pt-1">
+      <div className="flex-1 min-w-0">
         <div className="flex flex-col relative w-full">
 
           {/* Mention prefix */}
           {mentionPrefix && (
             <div className="mb-1">
-              <span className="text-muted-foreground text-[15px]">Replying to </span>
-              <span className="text-[#1d9bf0] text-[15px] cursor-pointer hover:underline">
+              <span className="text-muted-foreground text-[13px]">Replying to </span>
+              <span className="text-[#1d9bf0] text-[13px] cursor-pointer hover:underline">
                 @{mentionPrefix}
               </span>
             </div>
@@ -116,7 +116,7 @@ export default function CommentInput({
             placeholder={finalPlaceholder}
             rows={1}
             disabled={isLoading}
-            className="w-full min-h-6 text-[20px] leading-6 placeholder:text-muted-foreground text-foreground resize-none outline-none bg-transparent max-h-[70vh]"
+            className="w-full min-h-5 text-[14px] leading-5 placeholder:text-muted-foreground text-foreground resize-none outline-none bg-transparent max-h-[70vh]"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -126,14 +126,14 @@ export default function CommentInput({
           />
 
           {/* Actions & Submit */}
-          <div className="flex items-center justify-between mt-3 pt-2">
+          <div className="flex items-center justify-between mt-2 pt-1">
             <div className="flex items-center gap-1 relative -ml-2">
               
               <Popover open={showEmoji} onOpenChange={setShowEmoji}>
                 <PopoverTrigger 
-                  className="p-2 rounded-full transition-colors text-[#1d9bf0] hover:bg-[#1d9bf0]/10 flex items-center justify-center cursor-pointer outline-none"
+                  className="p-1.5 rounded-full transition-colors text-[#1d9bf0] hover:bg-[#1d9bf0]/10 flex items-center justify-center cursor-pointer outline-none"
                 >
-                  <Smile size={20} strokeWidth={2.5} />
+                  <Smile size={18} strokeWidth={2.5} />
                 </PopoverTrigger>
                 <PopoverContent 
                   side="bottom" 
@@ -154,14 +154,14 @@ export default function CommentInput({
 
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {isEditing && (
                 <Button
                   type="button"
                   variant="ghost"
                   onClick={onCancelEdit}
                   disabled={isLoading}
-                  className="rounded-full"
+                  className="rounded-full h-auto px-3 py-1.5 text-[13px]"
                 >
                   Cancel
                 </Button>
@@ -171,8 +171,7 @@ export default function CommentInput({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!value.trim() || isLoading}
-                size="sm"
-                className="px-5 py-2 font-bold rounded-full bg-[#1d9bf0] text-white hover:bg-[#1a8cd8] shadow-none disabled:opacity-50"
+                className="px-4 py-1.5 h-auto text-[13px] font-bold rounded-full bg-[#1d9bf0] text-white hover:bg-[#1a8cd8] shadow-none disabled:opacity-50"
               >
                 {finalButtonText}
               </Button>
@@ -192,15 +191,15 @@ export default function CommentInput({
                 <button
                   key={user.id}
                   onClick={() => selectUser(user)}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border/50 last:border-0"
+                  className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-muted transition-colors border-b border-border/50 last:border-0"
                 >
-                  <Avatar className="w-10 h-10 shrink-0">
+                  <Avatar className="w-8 h-8 shrink-0">
                     <AvatarImage src={user.avatarUrl} />
-                    <AvatarFallback className="bg-muted">{user.name[0]}</AvatarFallback>
+                    <AvatarFallback className="bg-muted text-[11px]">{user.name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col">
-                    <span className="font-bold text-foreground text-[15px]">{user.name}</span>
-                    <span className="text-muted-foreground text-[15px]">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
+                    <span className="font-bold text-foreground text-[13px]">{user.name}</span>
+                    <span className="text-muted-foreground text-[12px]">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
                   </div>
                 </button>
               ))}

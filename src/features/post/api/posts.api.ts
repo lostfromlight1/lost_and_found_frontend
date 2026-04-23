@@ -21,3 +21,7 @@ export const toggleLikePostApi = async (id: number): Promise<void> => {
 export const deletePostApi = async (id: number): Promise<void> => {
   return await apiClient.delete(`/posts/${id}`);
 };
+
+export const getPostByIdApi = async (id: number): Promise<PostResponseDto> => {
+  return await apiClient.get(`/posts/${id}`);
+};

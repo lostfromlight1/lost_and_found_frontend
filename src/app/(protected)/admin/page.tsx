@@ -4,12 +4,13 @@ import { useState } from "react";
 import { UserManagementTable } from "@/features/admin/components/UserManagementTable";
 import { CategoryManagementTable } from "@/features/admin/components/CategoryManagementTable";
 import PostManagementTable from "@/features/admin/components/PostManagementTable";
+import ReportManagementTable from "@/features/admin/components/ReportManagementTable"; // <-- Imported Report table
 import { DashboardHeader } from "@/features/users/components/DashboardHeader";
-import { UsersIcon, TagIcon, ArticleIcon } from "@phosphor-icons/react/dist/ssr";
+import { UsersIcon, TagIcon, ArticleIcon, FlagIcon } from "@phosphor-icons/react/dist/ssr"; // <-- Added FlagIcon
 import { Button } from "@/components/ui/button";
 
 export default function AdminPage() {
-  const [activeView, setActiveView] = useState<"users" | "categories" | "posts">("users");
+  const [activeView, setActiveView] = useState<"users" | "categories" | "posts" | "reports">("users");
 
   return (
     <div className="space-y-6">
@@ -46,6 +47,14 @@ export default function AdminPage() {
           <ArticleIcon size={18} />
           Post Management
         </Button>
+        <Button
+          variant={activeView === "reports" ? "default" : "outline"}
+          onClick={() => setActiveView("reports")}
+          className="flex items-center gap-2"
+        >
+          <FlagIcon size={18} />
+          Report Management
+        </Button>
       </div>
 
       {/* Active View */}
@@ -53,6 +62,7 @@ export default function AdminPage() {
         {activeView === "users" && <UserManagementTable />}
         {activeView === "categories" && <CategoryManagementTable />}
         {activeView === "posts" && <PostManagementTable />}
+        {activeView === "reports" && <ReportManagementTable />}
       </section>
     </div>
   );

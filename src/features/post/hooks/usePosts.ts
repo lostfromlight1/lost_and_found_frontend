@@ -60,10 +60,11 @@ export const useUpdatePost = () => {
 
   return useMutation<PostResponseDto, unknown, { id: number; data: UpdatePostRequest }>({
     mutationFn: ({ id, data }) => updatePostService(id, data),
-    
     onSuccess: () => {
       toast.success("Post updated successfully");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] }); 
     },
     onError: handleApiError,
   });
@@ -77,6 +78,8 @@ export const useDeletePost = () => {
     onSuccess: () => {
       toast.success("Post deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      // Keep Admin Review Modal in sync
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });
@@ -90,7 +93,7 @@ export const useToggleLikePost = () => {
     void, 
     unknown, 
     number, 
-    { previousQueries: [QueryKey, unknown][] } // <-- Explicit Context Type
+    { previousQueries: [QueryKey, unknown][] }
   >({
     mutationFn: (postId) => toggleLikePostService(postId),
     onMutate: async (postId) => {
@@ -99,7 +102,7 @@ export const useToggleLikePost = () => {
 
       queryClient.setQueriesData(
         { queryKey: ["posts"] }, 
-        (oldData: PageResponse<PostResponseDto> | undefined) => { // <-- Typed oldData
+        (oldData: PageResponse<PostResponseDto> | undefined) => {
           if (!oldData || !oldData.content) return oldData;
           return {
             ...oldData,
@@ -109,7 +112,7 @@ export const useToggleLikePost = () => {
                 return {
                   ...post,
                   liked: !isCurrentlyLiked,
-                  LikeCount: isCurrentlyLiked 
+                  likeCount: isCurrentlyLiked 
                     ? Math.max(0, post.LikeCount - 1) 
                     : post.LikeCount + 1,
                 };
@@ -122,7 +125,7 @@ export const useToggleLikePost = () => {
 
       return { previousQueries };
     },
-    onError: (err, _postId, context) => { // <-- Renamed to _postId to avoid unused var warning
+    onError: (err, _postId, context) => {
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);

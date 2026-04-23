@@ -37,11 +37,7 @@ export default function PostManagementTable() {
   };
 
   const columns: TableColumn<PostResponseDto>[] = [
-    { 
-      key: "id", 
-      header: "ID", 
-      width: 80 
-    },
+    { key: "id", header: "ID", width: 80 },
     { 
       key: "title", 
       header: "Title", 
@@ -52,7 +48,7 @@ export default function PostManagementTable() {
       key: "user",
       header: "Author",
       render: (_, row) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col text-left">
           <span className="text-sm font-semibold text-gray-900">
             {row.user?.displayName ?? "Unknown"}
           </span>
@@ -66,31 +62,35 @@ export default function PostManagementTable() {
       key: "type", 
       header: "Type",
       render: (val) => (
-        <span className={cn(
-          "px-2 py-1 rounded-full text-[10px] font-bold",
-          val === "LOST" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
-        )}>
-          {String(val)}
-        </span>
+        <div className="text-left">
+          <span className={cn(
+            "px-2 py-1 rounded-full text-[10px] font-bold",
+            val === "LOST" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+          )}>
+            {String(val)}
+          </span>
+        </div>
       )
     },
     { 
       key: "status", 
       header: "Status",
       render: (val) => (
-        <span className={cn(
-          "px-2 py-1 rounded-full text-[10px] font-bold",
-          val === "OPEN" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"
-        )}>
-          {String(val)}
-        </span>
+        <div className="text-left">
+          <span className={cn(
+            "px-2 py-1 rounded-full text-[10px] font-bold",
+            val === "OPEN" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"
+          )}>
+            {String(val)}
+          </span>
+        </div>
       )
     },
     { 
       key: "city", 
       header: "Location", 
       render: (_, row) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col text-left">
           <span className="text-sm font-medium text-gray-900">{row.city}</span>
           <span 
             className="text-xs text-slate-500 truncate max-w-37.5" 
@@ -101,15 +101,22 @@ export default function PostManagementTable() {
         </div>
       )
     },
-    { key: "lostFoundDate", header: "Date", className: "text-sm text-gray-600" },
+    { key: "lostFoundDate", header: "Date", className: "text-sm text-gray-600 text-left" },
     {
       key: "actions",
       header: "Actions",
       width: 120,
+      className: "text-center", // <-- CENTERED HEADER
       render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(row)}>
-            <Pencil size={16} className="text-slate-500" />
+        <div className="flex items-center gap-1 justify-end"> {/* <-- RIGHT ALIGNED ICONS */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+            onClick={() => handleEdit(row)}
+            title="Edit Post"
+          >
+            <Pencil size={16} />
           </Button>
           <Button 
             variant="ghost" 
@@ -117,6 +124,7 @@ export default function PostManagementTable() {
             className="text-red-500 hover:text-red-700 hover:bg-red-50"
             onClick={() => handleDelete(row.id)}
             disabled={isDeleting}
+            title="Delete Post"
           >
             <Trash2 size={16} />
           </Button>

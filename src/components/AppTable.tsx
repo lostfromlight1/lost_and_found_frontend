@@ -22,10 +22,6 @@ import { cn } from "@/lib/utils";
    TYPES
 ========================================================= */
 
-/**
- * T represents the data row type.
- * Value represents the value of the specific field being rendered.
- */
 export interface TableColumn<T> {
   key: string;
   header: React.ReactNode;
@@ -68,6 +64,8 @@ interface AppTableProps<T extends object> {
   className?: string;
   headerClassName?: string;
   tableContainerClassName?: string;
+  // NEW PROP ADDED:
+  customFilters?: React.ReactNode; 
 }
 
 /* =========================================================
@@ -165,6 +163,7 @@ export default function AppTable<T extends object>({
   className,
   headerClassName,
   tableContainerClassName,
+  customFilters, // DESTRUCTURED HERE
 }: AppTableProps<T>) {
   return (
     <div className={cn("space-y-4", className)}>
@@ -178,7 +177,9 @@ export default function AppTable<T extends object>({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* INJECTED CUSTOM FILTERS NEXT TO BUTTONS */}
+        <div className="flex items-center gap-4">
+          {customFilters}
           {canExport && <AppTableExport onExport={onExport} />}
           {addLabel && <AppTableCreate onAdd={onAdd} label={addLabel} />}
         </div>
@@ -218,7 +219,6 @@ export default function AppTable<T extends object>({
                     return (
                       <TableCell
                         key={`${rowIndex}-${column.key || colIndex}`}
-                        // FIXED: Added `column.className` to the cell so header and cell alignments perfectly match!
                         className={cn(column.className, column.cellClassName)}
                       >
                         {column.render
