@@ -15,8 +15,16 @@ export default withAuth(
       return NextResponse.redirect(url);
     }
 
-    // 2. Protect Admin Routes: Only allow users with the 'ADMIN' role.
-    // If a non-admin tries to access /admin, send them to the public dashboard.
+    // 2. Email Verification Check
+    // If the user is logged in but hasn't verified their email, force them to the verification page.
+    if (token && token.user?.emailVerified === false) {
+      // Prevent infinite redirect loops if they are already on the verify-email page
+      if (!path.startsWith("/verify-email")) {
+        return NextResponse.redirect(new URL("/verify-email", req.url));
+      }
+    }
+
+    // 3. Protect Admin Routes: Only allow users with the 'ADMIN' role.
     if (path.startsWith("/admin")) {
       if (token?.user?.role !== "ADMIN") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -36,7 +44,7 @@ export default withAuth(
           return true;
         }
 
-        // For all other matched routes (Admin and Settings), require a valid token.
+        // For all other matched routes, require a valid token.
         return !!token;
       },
     },
@@ -44,8 +52,14 @@ export default withAuth(
 );
 
 // Apply the middleware only to routes that need logic or protection.
-// We include /dashboard here so we can still check for 'RefreshAccessTokenError' 
-// even though the route is technically public.
+// Added the missing protected routes (profile, bookmarks, notifications)
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/settings/:path*"],
+  matcher: [
+    "/dashboard/:path*", 
+    "/admin/:path*", 
+    "/settings/:path*",
+    "/profile/:path*",
+    "/bookmarks/:path*",
+    "/notifications/:path*"
+  ],
 };

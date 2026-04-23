@@ -25,3 +25,15 @@ export const deletePostApi = async (id: number): Promise<void> => {
 export const getPostByIdApi = async (id: number): Promise<PostResponseDto> => {
   return await apiClient.get(`/posts/${id}`);
 };
+
+export const toggleBookmarkPostApi = async (id: number): Promise<void> => {
+  return await apiClient.post(`/posts/${id}/bookmark`);
+};
+
+export const getBookmarksApi = async (page = 0, size = 20): Promise<PageResponse<PostResponseDto>> => {
+  return await apiClient.get("/posts/bookmarks", { params: { page, size } });
+};
+
+export const getUserPostsApi = async (userId: number, page = 0, size = 20): Promise<PageResponse<PostResponseDto>> => {
+  return await apiClient.get(`/posts/user/${userId}`, { params: { page, size } });
+};

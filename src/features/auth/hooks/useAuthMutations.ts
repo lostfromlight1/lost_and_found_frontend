@@ -2,7 +2,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
-// FIXED: Added getSession to the imports
 import { signIn, signOut, getSession } from "next-auth/react";
 import { BaseErrorResponse } from "@/types/api.types";
 import {
@@ -66,7 +65,13 @@ export const useLogin = () => {
       router.refresh(); 
     },
     onError: (error: Error) => {
-      toast.warning(error.message || "Invalid email or password");
+      // INTERCEPT THE UNVERIFIED ERROR AND REDIRECT
+      if (error.message.toLowerCase().includes("verify your email")) {
+        toast.error("Please verify your email address to continue.");
+        router.push("/verify-email");
+      } else {
+        toast.warning(error.message || "Invalid email or password");
+      }
     },
   });
 };
@@ -77,18 +82,13 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: async () => {
       try {
-        // 1. Get current session to get the refresh token
         const sessionData = await getSession();
-        
-        // 2. Revoke token on backend
         if (sessionData?.refreshToken) {
           await logoutService(sessionData.refreshToken);
         }
       } catch (e) {
         console.warn("Backend logout failed, but proceeding to clear local session", e);
       }
-      
-      // 3. Clear NextAuth session locally
       await signOut({ redirect: false });
     },
     onSuccess: () => {
@@ -126,7 +126,7 @@ export const useRequestPasswordReset = () => {
   return useMutation({
     mutationFn: (email: string) => requestPasswordResetService(email),
     onSuccess: () => {
-      toast.success("If the email exists, a reset link has been sent.");
+      toast.success("If the email exists, a reset code has been sent.");
     },
     onError: handleApiError,
   });
@@ -145,9 +145,16 @@ export const useConfirmPasswordReset = () => {
   });
 };
 
+// FIXED: Reverted to pushing to /login since the user doesn't have a session yet!
 export const useVerifyEmail = () => {
+  const router = useRouter();
+
   return useMutation({
     mutationFn: (token: string) => verifyEmailService(token),
+    onSuccess: () => {
+      toast.success("Email verified successfully! You can now log in.");
+      router.push("/login?message=Email verified successfully! Please log in to access your dashboard.");
+    },
     onError: handleApiError,
   });
 };

@@ -70,26 +70,25 @@ export default function DatePickerForm<TFieldValues extends FieldValues>({
           ) : null}
           <FormControl>
             <Popover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "h-9 w-full justify-between rounded-md px-3 text-left font-normal",
-                      !field.value && "text-muted-foreground",
-                      buttonClassName
-                    )}
-                    disabled={disabled}
-                  >
-                    {field.value ? (
-                      formatDate(field.value as Date)
-                    ) : (
-                      <span>{placeholder}</span>
-                    )}
-                    <CalendarBlankIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                }
-              />
+              {/* FIX: Use asChild and wrap the Button instead of using the render prop */}
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "h-9 w-full justify-between rounded-md px-3 text-left font-normal",
+                    !field.value && "text-muted-foreground",
+                    buttonClassName
+                  )}
+                  disabled={disabled}
+                >
+                  {field.value ? (
+                    formatDate(field.value as Date)
+                  ) : (
+                    <span>{placeholder}</span>
+                  )}
+                  <CalendarBlankIcon className="ml-auto h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"

@@ -20,6 +20,7 @@ type AuthUser = {
   avatarUrl?: string | null;
   avatarPublicId?: string | null;
   isLocked?: boolean;
+  emailVerified?: boolean; // <--- ADDED
 };
 
 type ExtendedUser = AuthUser & {
@@ -161,6 +162,7 @@ export const authOptions: NextAuthOptions = {
       session.error = token.error as "RefreshAccessTokenError" | undefined;
       
       return session;
-    },  },
+    },  
+  },
   pages: { signIn: "/login" },
 };

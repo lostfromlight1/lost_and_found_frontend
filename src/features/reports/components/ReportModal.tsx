@@ -22,12 +22,11 @@ interface ReportFormData {
 }
 
 const REASONS = [
-  "SPAM", "HARASSMENT", "HATE_SPEECH", "SCAM", "INAPPROPRIATE", "OTHER"
+  "SPAM", "SCAM", "INAPPROPRIATE", "HARASSMENT", "FAKE", "OTHER"
 ];
 
-// Map the reasons to the `{ label, value }` format expected by SelectForm
 const REASON_OPTIONS = REASONS.map((r) => ({
-  label: r.replace("_", " "),
+  label: r.charAt(0) + r.slice(1).toLowerCase().replace("_", " "),
   value: r,
 }));
 

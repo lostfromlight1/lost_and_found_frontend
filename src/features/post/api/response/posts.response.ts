@@ -33,8 +33,11 @@ export interface PostResponseDto {
   user: UserSummaryDto;
   category: CategoryDto;
   images: ImageDto[];
-  LikeCount: number; 
+  likeCount?: number; 
+  LikeCount?: number; 
   liked: boolean;
+  commentCount: number;
+  bookmarked: boolean;
 }
 
 export interface PageResponse<T> {

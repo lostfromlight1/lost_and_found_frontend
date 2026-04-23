@@ -16,6 +16,7 @@ declare module "next-auth" {
       avatarUrl?: string | null;
       avatarPublicId?: string | null;
       isLocked?: boolean;
+      emailVerified?: boolean; 
     } & DefaultSession["user"];
   }
 
@@ -28,6 +29,7 @@ declare module "next-auth" {
     avatarUrl?: string | null;
     avatarPublicId?: string | null;
     isLocked?: boolean;
+    emailVerified?: boolean; 
   }
 }
 
@@ -47,6 +49,7 @@ declare module "next-auth/jwt" {
       avatarUrl?: string | null;
       avatarPublicId?: string | null;
       isLocked?: boolean;
+      emailVerified?: boolean; 
     };
   }
 }

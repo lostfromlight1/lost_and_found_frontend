@@ -10,6 +10,7 @@ import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import InputForm from "@/components/form/InputForm";
 import { useEffect } from "react"; 
+import { MailCheck } from "lucide-react";
 
 const verifySchema = z.object({
   token: z.string()
@@ -45,41 +46,51 @@ export function VerifyEmailForm({ token }: { token?: string | null }) {
     if (token) {
       verifyEmail(token, {
         onSuccess: () => {
-          router.push("/login?message=Email verified successfully! Please log in to access your dashboard.");
+          // Note: Your updated useVerifyEmail hook already handles redirecting to /dashboard.
+          // The router.push here acts as a fallback.
+          router.push("/dashboard");
         }
       });
     }
   }, [token, verifyEmail, router]);
 
   const onVerifySubmit = (data: VerifyFormValues) => {
-    verifyEmail(data.token, {
-      onSuccess: () => {
-        router.push("/login?message=Email verified successfully! Please log in to access your dashboard.");
-      }
-    });
+    verifyEmail(data.token);
   };
 
   const onResendSubmit = (data: ResendFormValues) => {
     resendEmail(data.email);
   };
 
+  // Loading state for URL token processing
   if (token) {
     return (
-      <div className="w-full max-w-md bg-white p-8 border rounded-lg shadow-sm text-center">
-        <h2 className="text-2xl font-bold mb-4">Verifying your email...</h2>
-        <p className="text-gray-600">Please wait while we confirm your code.</p>
+      <div className="w-full max-w-md bg-white p-8 sm:p-10 border border-slate-200 rounded-2xl shadow-sm text-center flex flex-col items-center">
+        <div className="w-16 h-16 bg-[#1d9bf0]/10 text-[#1d9bf0] rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+          <MailCheck size={32} strokeWidth={2.5} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Verifying...</h2>
+        <p className="text-slate-500 font-medium">Please wait while we securely confirm your code.</p>
       </div>
     );
   }
 
+  // Main UI
   return (
-    <div className="w-full max-w-md bg-white p-8 border rounded-lg shadow-sm text-center">
+    <div className="w-full max-w-md bg-white p-8 sm:p-10 border border-slate-200 rounded-2xl shadow-sm flex flex-col">
       
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Verify your email</h2>
-      <p className="text-slate-600 mb-6 text-sm">
-        We sent a 6-character code to your email. Enter it below to activate your account.
-      </p>
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 bg-[#1d9bf0]/10 text-[#1d9bf0] rounded-full flex items-center justify-center mx-auto mb-6">
+          <MailCheck size={32} strokeWidth={2.5} />
+        </div>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Verify your email</h2>
+        <p className="text-slate-500 font-medium text-[14px]">
+          We sent a 6-character code to your email. Enter it below to activate your account.
+        </p>
+      </div>
 
+      {/* Verify Code Form */}
       <Form {...verifyForm}>
         <form onSubmit={verifyForm.handleSubmit(onVerifySubmit)} className="space-y-4">
           <InputForm
@@ -87,11 +98,12 @@ export function VerifyEmailForm({ token }: { token?: string | null }) {
             name="token"
             type="text"
             placeholder="e.g. G2JK45"
-            inputClassName="text-center text-2xl tracking-widest uppercase font-mono"
+            // Special styling for the 6-character code input
+            inputClassName="text-center text-2xl tracking-[0.25em] uppercase font-mono h-14 rounded-xl bg-slate-50 border-slate-200 focus:bg-white transition-colors placeholder:tracking-normal placeholder:normal-case placeholder:text-base"
           />
           <Button 
             type="submit" 
-            className="w-full" 
+            className="w-full rounded-full h-12 font-bold text-[15px] bg-[#1d9bf0] text-white hover:bg-[#1a8cd8] shadow-none" 
             disabled={isVerifying}
           >
             {isVerifying ? "Verifying..." : "Verify Account"}
@@ -99,8 +111,11 @@ export function VerifyEmailForm({ token }: { token?: string | null }) {
         </form>
       </Form>
 
-      <div className="mt-8 border-t pt-6 text-left">
-        <p className="text-sm font-medium text-slate-700 mb-4">Didn&apos;t receive the code?</p>
+      {/* Resend Section */}
+      <div className="mt-8 border-t border-slate-100 pt-8">
+        <h3 className="text-[13px] font-black uppercase tracking-widest text-slate-900 mb-4 text-center">
+          Didn`&apos;`t receive the code? 
+        </h3>
         
         <Form {...resendForm}>
           <form onSubmit={resendForm.handleSubmit(onResendSubmit)} className="space-y-4">
@@ -112,7 +127,7 @@ export function VerifyEmailForm({ token }: { token?: string | null }) {
             />
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full rounded-full h-11 font-bold text-[14px] border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-none" 
               variant="outline"
               disabled={isResending}
             >
@@ -122,7 +137,8 @@ export function VerifyEmailForm({ token }: { token?: string | null }) {
         </Form>
       </div>
       
-      <Link href="/login" className="block mt-6 text-sm text-primary font-medium hover:underline">
+      {/* Footer */}
+      <Link href="/login" className="block mt-6 text-sm text-center text-slate-500 font-medium hover:text-slate-900 transition-colors">
         Return to Login
       </Link>
     </div>

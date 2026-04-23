@@ -69,7 +69,8 @@ export default function RightSidebar({
   }, [dateRange, startDate, endDate, setStartDate, setEndDate]);
 
   return (
-    <div className="flex flex-col w-87.5 xl:w-95 h-full pt-8 pb-6 px-8 border border-l border-slate-200 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+    // FIX: Updated width to be responsive so it works beautifully inside the popover drawer
+    <div className="flex flex-col w-full lg:w-[320px] xl:w-[350px] h-full pt-8 pb-6 px-6 xl:px-8 border-l border-transparent lg:border-slate-200 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       
       {/* Minimalist Search Bar */}
       <div className="mb-8 shrink-0">
