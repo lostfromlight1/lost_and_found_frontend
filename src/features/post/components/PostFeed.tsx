@@ -1,33 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Search, PlusCircle } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSession } from "next-auth/react";
+import { Search, Image as ImageIcon, MapPin } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useDebounce } from "use-debounce";
 import { usePosts } from "../hooks/usePosts";
 import { useCategories } from "@/features/categories/hooks/useCategories";
+
 import PostCard from "./PostCard";
 import PostFormModal from "./PostFormModal";
-import { useDebounce } from "use-debounce";
-
-const MYANMAR_CITIES = [
-  { label: "Yangon", value: "YANGON" }, { label: "Mandalay", value: "MANDALAY" },
-  { label: "Naypyidaw", value: "NAYPYIDAW" }, { label: "Taunggyi", value: "TAUNGGYI" },
-  { label: "Mawlamyine", value: "MAWLAMYINE" }, { label: "Bago", value: "BAGO" },
-  { label: "Pathein", value: "PATHEIN" }, { label: "Myitkyina", value: "MYITKYINA" },
-  { label: "Monywa", value: "MONYWA" }, { label: "Sittwe", value: "SITTWE" },
-  { label: "Pyay", value: "PYAY" }, { label: "Pakokku", value: "PAKOKKU" },
-  { label: "Magway", value: "MAGWAY" }, { label: "Hpa-An", value: "HPA_AN" },
-  { label: "Lashio", value: "LASHIO" }, { label: "Dawei", value: "DAWEI" },
-  { label: "Meiktila", value: "MEIKTILA" }, { label: "Pyin Oo Lwin", value: "PYIN_OO_LWIN" },
-  { label: "Loikaw", value: "LOIKAW" }, { label: "Hakha", value: "HAKHA" },
-  { label: "Myeik", value: "MYEIK" },
-];
+import RightSidebar from "@/components/layout/RightSidebar";
+import MainLayout from "@/components/layout/MainLayout";
 
 interface CategoryItem { id: number; name: string; }
 
 export default function PostFeed() {
+  const { data: session } = useSession();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Filter States
@@ -35,101 +24,109 @@ export default function PostFeed() {
   const [city, setCity] = useState<string>("ALL");
   const [categoryId, setCategoryId] = useState<string>("ALL");
   const [locationDetails, setLocationDetails] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [debouncedLocation] = useDebounce(locationDetails, 500);
 
+  // API Hooks
   const { data: categoriesData } = useCategories();
   const safeCategoriesData = categoriesData as unknown as { content?: CategoryItem[]; data?: CategoryItem[] };
   const categoriesList: CategoryItem[] = Array.isArray(categoriesData) 
     ? categoriesData : safeCategoriesData?.content || safeCategoriesData?.data || [];
 
-const activeFilters = {
+  const activeFilters = {
     page: 0, 
     size: 20,
     ...(type !== "ALL" && { type: type as "LOST" | "FOUND" }),
     ...(city !== "ALL" && { city }),
     ...(categoryId !== "ALL" && { categoryId: Number(categoryId) }),
-    // 3. Use the DEBOUNCED value here instead of the raw state
     ...(debouncedLocation.trim() && { locationDetails: debouncedLocation.trim() }),
+    ...(startDate && { startDate }),
+    ...(endDate && { endDate }),
   };
+  
   const { data: postsPage, isLoading } = usePosts(activeFilters);
   const posts = postsPage?.content || [];
 
   return (
-    <div className="w-full space-y-6">
-      
-      {/* Top Input Row (From Wireframe) */}
-      <div className="flex gap-2">
-        <Button 
-          variant="outline" 
-          className="flex-1 justify-start rounded-full text-slate-500 bg-white border-slate-300 h-12 text-md shadow-sm hover:bg-slate-50 cursor-text"
-          onClick={() => setIsCreateModalOpen(true)}
-        >
-          <div className="w-8 h-8 rounded-full bg-slate-200 mr-2 flex shrink-0 items-center justify-center text-xs text-slate-500 font-bold">Me</div>
-          Write something...
-        </Button>
-        <Button 
-          className="rounded-full h-12 px-6 font-semibold shadow-sm shrink-0" 
-          onClick={() => setIsCreateModalOpen(true)}
-        >
-          <PlusCircle className="mr-2" size={20} />
-          New Post
-        </Button>
-      </div>
-
-      {/* Filter Row (From Wireframe) */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Select value={type} onValueChange={(val) => setType((val as "LOST" | "FOUND" | "ALL") || "ALL")}>
-          <SelectTrigger className="bg-white rounded-full h-10 shadow-sm border-slate-200"><SelectValue placeholder="Type" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Types</SelectItem>
-            <SelectItem value="LOST">Lost</SelectItem>
-            <SelectItem value="FOUND">Found</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={categoryId} onValueChange={(val) => setCategoryId(val || "ALL")}>
-          <SelectTrigger className="bg-white rounded-full h-10 shadow-sm border-slate-200"><SelectValue placeholder="Category" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Categories</SelectItem>
-            {categoriesList.map((cat) => (<SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>))}
-          </SelectContent>
-        </Select>
-
-        <Select value={city} onValueChange={(val) => setCity(val || "ALL")}>
-          <SelectTrigger className="bg-white rounded-full h-10 shadow-sm border-slate-200"><SelectValue placeholder="City" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">All Cities</SelectItem>
-            {MYANMAR_CITIES.map(c => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}
-          </SelectContent>
-        </Select>
-
-        <div className="relative flex-1">
-          <Search className="absolute right-3 top-2.5 h-5 w-5 text-slate-400" />
-          <Input 
-            placeholder="Search location details..." 
-            className="pr-10 bg-white rounded-full h-10 shadow-sm border-slate-200"
-            value={locationDetails}
-            onChange={(e) => setLocationDetails(e.target.value)}
+    <>
+      <MainLayout 
+        onPostClick={() => setIsCreateModalOpen(true)}
+        rightSidebar={
+          <RightSidebar 
+            type={type} setType={setType}
+            city={city} setCity={setCity}
+            categoryId={categoryId} setCategoryId={setCategoryId}
+            locationDetails={locationDetails} setLocationDetails={setLocationDetails}
+            startDate={startDate} setStartDate={setStartDate}
+            endDate={endDate} setEndDate={setEndDate}
+            categoriesList={categoriesList}
           />
-        </div>
-      </div>
-
-      {/* Feed List */}
-      <div className="space-y-4">
-        {isLoading ? (
-          <div className="text-center py-12 text-slate-500 font-medium">Loading feed...</div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-200 shadow-sm">
-            <Search size={40} className="mx-auto text-slate-300 mb-3" />
-            <p className="font-semibold text-slate-700">No posts found</p>
+        }
+      >
+        {/* Top Tabs */}
+        <div className="sticky top-0 bg-white/90 backdrop-blur-md z-30 border-b border-slate-100 flex items-center cursor-pointer shrink-0">
+          <div className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-4 pb-3 relative">
+            Latest
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-full" />
           </div>
-        ) : (
-          posts.map((post) => (<PostCard key={post.id} post={post} />))
-        )}
-      </div>
+          <div className="flex-1 hover:bg-slate-50 transition-colors text-center font-medium text-slate-500 text-[15px] pt-4 pb-3">
+            Top Posts
+          </div>
+        </div>
 
+        {/* Quick Post Input Area */}
+        <div className="flex gap-4 p-5 border-b border-slate-100 shrink-0 bg-white">
+          <Avatar className="w-10 h-10 shrink-0 border border-slate-100">
+            <AvatarImage src={session?.user?.image || undefined} />
+            <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 flex flex-col">
+            <input 
+              type="text" 
+              placeholder="What did you lose or find?!" 
+              readOnly
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-full text-[20px] outline-none bg-transparent placeholder:text-slate-500 mt-1 mb-3 cursor-text"
+            />
+            <div className="flex justify-between items-center pt-2">
+              <div className="flex gap-2 text-[#1d9bf0] -ml-2">
+                  <button onClick={() => setIsCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
+                    <ImageIcon size={20} />
+                  </button>
+                  <button onClick={() => setIsCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
+                    <MapPin size={20} />
+                  </button>
+              </div>
+              <button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-[#1d9bf0] text-white px-5 py-1.5 rounded-full font-bold text-[14px] hover:bg-[#1a8cd8] transition-colors"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Feed List */}
+        <div className="flex flex-col pb-20 shrink-0">
+          {isLoading ? (
+            <div className="text-center py-12 text-slate-500 font-medium">Loading feed...</div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-12 text-slate-500">
+              <Search size={40} className="mx-auto text-slate-300 mb-3" />
+              <p className="font-semibold text-slate-700">No posts found</p>
+              <p className="text-sm text-slate-400 mt-1">Try adjusting your filters.</p>
+            </div>
+          ) : (
+            posts.map((post) => (<PostCard key={post.id} post={post} />))
+          )}
+        </div>
+      </MainLayout>
+
+      {/* We keep the Modal outside the layout tree so it can trigger properly */}
       <PostFormModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} />
-    </div>
+    </>
   );
 }

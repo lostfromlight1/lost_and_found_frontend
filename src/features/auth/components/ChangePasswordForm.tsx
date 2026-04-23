@@ -30,11 +30,34 @@ export function ChangePasswordForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">
-        <InputForm control={form.control} name="oldPassword" label="Current Password" type="password" required />
-        <InputForm control={form.control} name="newPassword" label="New Password" type="password" required />
-        <InputForm control={form.control} name="confirmPassword" label="Confirm Password" type="password" required />
-        <Button type="submit" variant="destructive" disabled={isPending}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-md">
+        <InputForm 
+          control={form.control} 
+          name="oldPassword" 
+          label="Current Password" 
+          type="password" 
+          required 
+        />
+        <InputForm 
+          control={form.control} 
+          name="newPassword" 
+          label="New Password" 
+          type="password" 
+          required 
+        />
+        <InputForm 
+          control={form.control} 
+          name="confirmPassword" 
+          label="Confirm Password" 
+          type="password" 
+          required 
+        />
+        
+        <Button 
+          type="submit" 
+          disabled={isPending}
+          className="w-full mt-4 rounded-full h-11 bg-red-600 hover:bg-red-700 text-white font-bold text-[14px] transition-colors shadow-sm"
+        >
           {isPending ? "Updating..." : "Update Password"}
         </Button>
       </form>

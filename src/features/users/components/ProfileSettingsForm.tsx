@@ -79,101 +79,86 @@ export function ProfileSettingsForm() {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-6">
-      <div className="bg-white shadow-sm border rounded-2xl p-6 space-y-6">
-        <div className="flex items-center gap-5">
-          <div
-            className="relative group cursor-pointer"
-            onClick={() => fileInputRef.current?.click()}>
-            <div className="h-24 w-24 rounded-full overflow-hidden border">
-              {session?.user?.avatarUrl ? (
-                <img
-                  src={session.user.avatarUrl}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-slate-200 text-2xl font-bold">
-                  {session?.user?.displayName?.charAt(0) || "U"}
-                </div>
-              )}
-            </div>
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center rounded-full">
-              {isUploading ? (
-                <Loader2 className="animate-spin text-white" />
-              ) : (
-                <Camera className="text-white" />
-              )}
-            </div>
+    <div className="max-w-2xl space-y-8">
+      
+      {/* Avatar Upload Section */}
+      <div className="flex items-center gap-6 pb-8 border-b border-slate-200/60">
+        <div
+          className="relative group cursor-pointer shrink-0"
+          onClick={() => fileInputRef.current?.click()}>
+          <div className="h-24 w-24 rounded-full overflow-hidden border-4 border-white shadow-sm ring-1 ring-slate-200 bg-slate-100">
+            {session?.user?.avatarUrl ? (
+              <img
+                src={session.user.avatarUrl}
+                className="h-full w-full object-cover"
+                alt="Avatar"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center bg-slate-100 text-3xl font-black text-slate-400">
+                {session?.user?.displayName?.charAt(0).toUpperCase() || "U"}
+              </div>
+            )}
           </div>
-
-          <div>
-            <h2 className="text-lg font-semibold">Profile Picture</h2>
-            <p className="text-sm text-muted-foreground">
-              Click avatar to upload new image
-            </p>
+          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+            {isUploading ? (
+              <Loader2 className="animate-spin text-white h-6 w-6" />
+            ) : (
+              <Camera className="text-white h-6 w-6" />
+            )}
           </div>
+        </div>
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/*"
-            className="hidden"
+        <div className="flex flex-col">
+          <h2 className="text-[16px] font-black text-slate-900">Profile Picture</h2>
+          <p className="text-[13px] text-slate-500 font-medium mt-1">
+            Click your avatar to upload a new image.<br/>
+            Must be under 5MB.
+          </p>
+        </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
+        />
+      </div>
+
+      {/* Form Section */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-md">
+          <InputForm
+            control={form.control}
+            name="displayName"
+            label="Display Name"
+            required
           />
-        </div>
-        <div className="grid gap-2 text-sm">
-          <p>
-            <span className="text-muted-foreground">Name:</span>{" "}
-            <span className="font-medium">
-              {session?.user?.displayName || "-"}
-            </span>
-          </p>
 
-          <p>
-            <span className="text-muted-foreground">Contact:</span>{" "}
-            <span className="font-medium">
-              {session?.user?.contactInfo || "Not set"}
-            </span>
-          </p>
-        </div>
-      </div>
-      <div className="bg-white shadow-sm border rounded-2xl p-6">
-        <h3 className="text-lg font-semibold mb-4">Edit Profile</h3>
+          <InputForm
+            control={form.control}
+            name="contactInfo"
+            label="Contact Number"
+            placeholder="+959xxxxxxxx"
+            required
+          />
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <InputForm
-              control={form.control}
-              name="displayName"
-              label="Display Name"
-              required
-            />
-
-            <InputForm
-              control={form.control}
-              name="contactInfo"
-              label="Contact Number"
-              placeholder="+959xxxxxxxx"
-              required
-            />
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isUpdating || !form.formState.isDirty}
-            >
-              {isUpdating ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="animate-spin h-4 w-4" />
-                  Saving...
-                </span>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </form>
-        </Form>
-      </div>
+          <Button
+            type="submit"
+            className="w-full mt-4 rounded-full h-11 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-bold text-[14px] transition-colors shadow-sm"
+            disabled={isUpdating || !form.formState.isDirty}
+          >
+            {isUpdating ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="animate-spin h-5 w-5" />
+                Saving changes...
+              </span>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

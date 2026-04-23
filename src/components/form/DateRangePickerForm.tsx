@@ -74,45 +74,46 @@ export default function DateRangePickerForm<TFieldValues extends FieldValues>({
             ) : null}
             <FormControl>
               <Popover>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      id="date"
-                      variant={"outline"}
-                      className={cn(
-                        "h-11 w-full justify-start rounded-md px-3 text-left font-normal",
-                        !typedValue && "text-muted-foreground",
-                        buttonClassName
-                      )}
-                      disabled={disabled}
-                    >
-                      <CalendarBlankIcon className="mr-2 h-4 w-4 opacity-50" />
-                      {typedValue?.from ? (
-                        typedValue.to ? (
-                          <>
-                            {formatDate(typedValue.from)} -{" "}
-                            {formatDate(typedValue.to)}
-                          </>
-                        ) : (
-                          formatDate(typedValue.from)
-                        )
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "h-11 w-full justify-start rounded-md px-3 text-left font-normal",
+                      !typedValue && "text-muted-foreground",
+                      buttonClassName
+                    )}
+                    disabled={disabled}
+                  >
+                    <CalendarBlankIcon className="mr-2 h-4 w-4 opacity-50" />
+                    {typedValue?.from ? (
+                      typedValue.to ? (
+                        <>
+                          {formatDate(typedValue.from)} -{" "}
+                          {formatDate(typedValue.to)}
+                        </>
                       ) : (
-                        <span>{placeholder}</span>
-                      )}
-                    </Button>
-                  }
-                />
+                        formatDate(typedValue.from)
+                      )
+                    ) : (
+                      <span>{placeholder}</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                
+                {/* Ensure the Popover correctly aligns inside narrow containers */}
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="range"
                     defaultMonth={typedValue?.from}
                     selected={typedValue}
                     onSelect={field.onChange}
-                    numberOfMonths={2}
+                    numberOfMonths={1} // FIX: Changed from 2 to 1 so it perfectly fits the sidebar
                     disabled={disabled}
                     {...props}
                   />
                 </PopoverContent>
+                
               </Popover>
             </FormControl>
             {description ? (
