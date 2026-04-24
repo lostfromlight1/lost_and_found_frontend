@@ -10,8 +10,7 @@ import { FileText, MapPin, Mail } from "lucide-react";
 export default function ProfilePage() {
   const { data: session } = useSession();
   
-  // Explicitly cast to any to safely extract custom token parameters 
-  const user = session?.user as any;
+  const user = session?.user;
   const userId = Number(user?.id);
 
   const { data: postsPage, isLoading } = useUserPosts(userId);

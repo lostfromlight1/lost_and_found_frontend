@@ -50,9 +50,8 @@ export default function PostFeed() {
   const { data: postsPage, isLoading } = usePosts(activeFilters);
   const posts = postsPage?.content || [];
 
-  // FILTER: Only show posts that are not hidden
   const visiblePosts = posts.filter(
-    (post) => post.status?.toUpperCase() !== "HIDDEN" && !(post as any).hidden
+    (post) => post.status?.toUpperCase() !== "HIDDEN" && !(post as typeof post & { hidden?: boolean }).hidden
   );
 
   return (
