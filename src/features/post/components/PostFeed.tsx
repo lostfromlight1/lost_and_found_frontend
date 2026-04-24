@@ -50,6 +50,11 @@ export default function PostFeed() {
   const { data: postsPage, isLoading } = usePosts(activeFilters);
   const posts = postsPage?.content || [];
 
+  // FILTER: Only show posts that are not hidden
+  const visiblePosts = posts.filter(
+    (post) => post.status?.toUpperCase() !== "HIDDEN" && !(post as any).hidden
+  );
+
   return (
     <>
       <MainLayout 
@@ -65,74 +70,81 @@ export default function PostFeed() {
           />
         }
       >
-        {/* Top Tabs */}
-        <div className="sticky top-0 bg-white/90 backdrop-blur-md z-30 border-b border-slate-100 flex items-center cursor-pointer shrink-0">
-          <div 
-            onClick={() => setFeedTab("LATEST")} 
-            className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-4 pb-3 relative"
-          >
-            <span className={feedTab === "LATEST" ? "text-slate-900" : "text-slate-500 font-medium"}>Latest</span>
-            {feedTab === "LATEST" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-t-sm" />}
+        {/* Main Feed Container - stretches to full height with slate background */}
+        <div className="flex flex-col min-h-full bg-slate-100">
+          
+          {/* Top Tabs */}
+          <div className="sticky top-0 bg-white/90 backdrop-blur-md z-30 border-b border-slate-100 flex items-center cursor-pointer shrink-0">
+            <div 
+              onClick={() => setFeedTab("LATEST")} 
+              className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-4 pb-3 relative"
+            >
+              <span className={feedTab === "LATEST" ? "text-slate-900" : "text-slate-500 font-medium"}>Latest</span>
+              {feedTab === "LATEST" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-t-sm" />}
+            </div>
+            <div 
+              onClick={() => setFeedTab("TOP")} 
+              className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-4 pb-3 relative"
+            >
+              <span className={feedTab === "TOP" ? "text-slate-900" : "text-slate-500 font-medium"}>Top Posts</span>
+              {feedTab === "TOP" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-t-sm" />}
+            </div>
           </div>
-          <div 
-            onClick={() => setFeedTab("TOP")} 
-            className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-4 pb-3 relative"
-          >
-            <span className={feedTab === "TOP" ? "text-slate-900" : "text-slate-500 font-medium"}>Top Posts</span>
-            {feedTab === "TOP" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-[#1d9bf0] rounded-t-sm" />}
-          </div>
-        </div>
 
-        {/* Quick Post Input Area */}
-        <div className="flex gap-4 p-5 border-b border-slate-100 shrink-0 bg-white shadow-sm z-20">
-          <Avatar className="w-10 h-10 shrink-0 border border-slate-100">
-            <AvatarImage src={session?.user?.image || undefined} />
-            <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 flex flex-col">
-            <input 
-              type="text" 
-              placeholder="What did you lose or find?!" 
-              readOnly
-              onClick={() => setIsLocalCreateModalOpen(true)}
-              className="w-full text-[20px] outline-none bg-transparent placeholder:text-slate-500 mt-1 mb-3 cursor-text"
-            />
-            <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-              <div className="flex gap-2 text-[#1d9bf0] -ml-2 mt-1">
-                  <button onClick={() => setIsLocalCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
-                    <ImageIcon size={20} />
-                  </button>
-                  <button onClick={() => setIsLocalCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
-                    <MapPin size={20} />
-                  </button>
-              </div>
-              <button 
+          {/* Quick Post Input Area */}
+          <div className="flex gap-4 p-5 border-b border-slate-100 shrink-0 bg-white shadow-sm z-20">
+            <Avatar className="w-10 h-10 shrink-0 border border-slate-100">
+              <AvatarImage src={session?.user?.image || undefined} />
+              <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 flex flex-col">
+              <input 
+                type="text" 
+                placeholder="What did you lose or find?!" 
+                readOnly
                 onClick={() => setIsLocalCreateModalOpen(true)}
-                className="bg-[#1d9bf0] text-white px-5 py-1.5 rounded-full font-bold text-[14px] hover:bg-[#1a8cd8] transition-colors mt-1"
-              >
-                Post
-              </button>
+                className="w-full text-[20px] outline-none bg-transparent placeholder:text-slate-500 mt-1 mb-3 cursor-text"
+              />
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                <div className="flex gap-2 text-[#1d9bf0] -ml-2 mt-1">
+                    <button onClick={() => setIsLocalCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
+                      <ImageIcon size={20} />
+                    </button>
+                    <button onClick={() => setIsLocalCreateModalOpen(true)} className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors">
+                      <MapPin size={20} />
+                    </button>
+                </div>
+                <button 
+                  onClick={() => setIsLocalCreateModalOpen(true)}
+                  className="bg-[#1d9bf0] text-white px-5 py-1.5 rounded-full font-bold text-[14px] hover:bg-[#1a8cd8] transition-colors mt-1"
+                >
+                  Post
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Feed List with Spacing Added Here */}
-        <div className="flex flex-col pb-20 shrink-0 bg-slate-100 gap-2">
-          {isLoading ? (
-            <div className="bg-white text-center py-12 text-slate-500 font-medium">Loading feed...</div>
-          ) : posts.length === 0 ? (
-            <div className="bg-white text-center py-12 text-slate-500">
-              <Search size={40} className="mx-auto text-slate-300 mb-3" />
-              <p className="font-semibold text-slate-700">No posts found</p>
-              <p className="text-sm text-slate-400 mt-1">Try adjusting your filters.</p>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <div key={post.id} className="bg-white border-y border-slate-200 shadow-sm">
-                <PostCard post={post} />
+          {/* Feed List Container */}
+          <div className="flex flex-col flex-1 pb-20 gap-2">
+            {isLoading ? (
+              <div className="bg-white flex-1 flex flex-col items-center justify-center py-12 text-slate-500 font-medium border-y border-slate-200">
+                Loading feed...
               </div>
-            ))
-          )}
+            ) : visiblePosts.length === 0 ? (
+              <div className="bg-white flex-1 flex flex-col items-center justify-center py-16 text-slate-500 border-y border-slate-200">
+                <Search size={40} className="mx-auto text-slate-300 mb-4" />
+                <p className="font-semibold text-slate-700 text-lg">No posts found</p>
+                <p className="text-sm text-slate-400 mt-1">Try adjusting your filters or be the first to post!</p>
+              </div>
+            ) : (
+              visiblePosts.map((post) => (
+                <div key={post.id} className="bg-white border-y border-slate-200 shadow-sm">
+                  <PostCard post={post} />
+                </div>
+              ))
+            )}
+          </div>
+          
         </div>
       </MainLayout>
 

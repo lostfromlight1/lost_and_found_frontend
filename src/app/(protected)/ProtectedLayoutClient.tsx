@@ -16,8 +16,9 @@ export default function ProtectedLayoutClient({ children }: { children: React.Re
          <LeftSidebar onPostClick={() => setIsGlobalModalOpen(true)} />
       </div>
 
-      {/* 2. DYNAMIC PAGE CONTENT - Fixed to handle independent scrolling */}
-      <div className="flex-1 h-full min-w-0 p-0 sm:py-4 sm:pr-4 sm:pl-0 lg:py-5 lg:pr-5 lg:pl-0 overflow-y-auto scrollbar-hide">
+      {/* 2. DYNAMIC PAGE CONTENT */}
+      {/* Added flex flex-col to ensure MainLayout can fill height properly */}
+      <div className="flex flex-col flex-1 h-full min-w-0 p-0 sm:py-4 sm:pr-4 sm:pl-0 lg:py-5 lg:pr-5 lg:pl-0 overflow-y-auto scrollbar-hide">
          {children}
       </div>
       
