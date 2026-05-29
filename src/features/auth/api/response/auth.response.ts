@@ -3,12 +3,11 @@ export interface UserResponse {
   email: string;
   displayName: string;
   contactInfo?: string | null;
-  role: "USER" | "ADMIN";
+  role: Role;
   avatarUrl?: string | null;
   avatarPublicId?: string | null;
-  isLocked?: boolean;
+  isLocked: boolean;
 }
-
 export interface AuthResponse {
   accessToken: string;
   refreshToken: string;

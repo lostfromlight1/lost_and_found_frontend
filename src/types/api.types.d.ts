@@ -1,12 +1,11 @@
-export interface BaseResponse<T = void> {
+interface BaseResponse<T = void> {
   timestamp: string;
   apiId: string;
   traceId: string;
   message: string;
   data: T; 
 }
-
-export interface BaseErrorResponse {
+interface BaseErrorResponse {
   timestamp: string;
   httpStatus: number;
   errorCode: string;
@@ -17,7 +16,7 @@ export interface BaseErrorResponse {
   validationErrors?: Record<string, string>;
 }
 
-export interface PaginatedResponse<T> {
+interface PaginatedResponse<T> {
   content: T[];
   page: number;          
   size: number;          

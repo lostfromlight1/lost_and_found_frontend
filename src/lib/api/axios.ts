@@ -1,6 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getSession, signOut } from "next-auth/react";
-import { BaseErrorResponse } from "@/types/api.types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
 
@@ -67,8 +66,6 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // --- DOUBLE CHECK LOGIC ---
-        // Verify if the token was already refreshed by another concurrent request
         const session = await getSession();
         const currentToken = session?.accessToken;
         const failedToken = original.headers.Authorization?.toString().replace("Bearer ", "");
@@ -79,9 +76,8 @@ api.interceptors.response.use(
           return api(original);
         }
 
-        // --- TRIGGER REFRESH ---
         const res = await fetch(`/api/auth/session?update=${Date.now()}`);
-        const updatedSession = await res.json();
+        const updatedSession = await res.json() as { accessToken?: string; error?: string };
 
         if (!updatedSession?.accessToken || updatedSession.error) {
           throw new Error("Refresh failed");
@@ -91,13 +87,14 @@ api.interceptors.response.use(
         original.headers.Authorization = `Bearer ${updatedSession.accessToken}`;
         return api(original);
       } catch (err) {
-        notify(null); // Stop the hanging queue
+        notify(null);
         await signOut({ callbackUrl: "/login?error=SessionExpired" });
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );

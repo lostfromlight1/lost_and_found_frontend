@@ -24,16 +24,17 @@ export function formatDate(
 
 export function formatTime(
   value: DateValue,
-  format = "HH:mm",
+  format = "hh:mm A", 
   fallback = DEFAULT_FALLBACK
 ): string {
   const parsed = toDayjs(value);
   return parsed ? parsed.format(format) : fallback;
 }
 
+
 export function formatDateTime(
   value: DateValue,
-  format = "MMM DD, YYYY HH:mm",
+  format = "MMM DD, YYYY hh:mm A",
   fallback = DEFAULT_FALLBACK
 ): string {
   const parsed = toDayjs(value);
