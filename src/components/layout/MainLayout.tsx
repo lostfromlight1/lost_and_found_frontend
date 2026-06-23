@@ -8,63 +8,58 @@ interface MainLayoutProps {
   rightSidebar?: React.ReactNode;
 }
 
-export default function MainLayout({ children, rightSidebar }: MainLayoutProps) {
+export default function MainLayout({
+  children,
+  rightSidebar,
+}: MainLayoutProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex w-full h-full bg-white rounded-none shadow-sm border-x sm:border border-slate-200 overflow-hidden relative">
-      
-      {/* MAIN CONTENT (Middle feed) */}
-      {/* Added flex flex-col so child pages can stretch to 100% height */}
-      <main className={`flex flex-col flex-1 h-full w-full overflow-y-auto bg-white relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${rightSidebar ? 'lg:border-r border-slate-200' : ''}`}>
-        {children}
-      </main>
+    <div className="flex min-h-screen w-full gap-0 lg:gap-6">
+      <main className="min-w-0 flex-1">{children}</main>
 
-      {/* DESKTOP RIGHT SIDEBAR */}
-      {rightSidebar && (
-        <div className="hidden lg:block shrink-0 bg-slate-50/30 h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          {rightSidebar}
-        </div>
-      )}
-
-      {/* MOBILE / TABLET RIGHT SIDEBAR (POPOVER DRAWER) */}
       {rightSidebar && (
         <>
-          {/* Floating Action Button */}
+          <aside className="hidden shrink-0 lg:block lg:w-[320px] xl:w-[350px]">
+            <div className="sticky top-5">{rightSidebar}</div>
+          </aside>
+
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
-            className="lg:hidden absolute bottom-5 right-5 bg-slate-900 text-white p-3.5 rounded-full shadow-lg hover:bg-slate-800 transition-transform active:scale-95 z-40 flex items-center justify-center"
+            className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-[#b7cfb2] bg-[#edf5eb] text-[#2a3f3f] shadow-[0_10px_24px_rgba(42,63,63,0.18)] transition active:scale-95 lg:hidden"
           >
-            <Filter size={20} />
+            <Filter size={18} />
           </button>
 
-          {/* Drawer Backdrop */}
           {isMobileSidebarOpen && (
-            <div 
-              className="lg:hidden fixed inset-0 bg-slate-900/40 z-50 backdrop-blur-sm transition-opacity"
+            <div
+              className="fixed inset-0 z-50 bg-[#1f2f2f]/30 backdrop-blur-[2px] lg:hidden"
               onClick={() => setIsMobileSidebarOpen(false)}
             />
           )}
 
-          {/* Drawer Panel */}
-          <div 
-            className={`lg:hidden fixed top-0 right-0 h-full w-[340px] max-w-[85vw] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
-              isMobileSidebarOpen ? "translate-x-0" : "translate-x-full"
-            }`}
+          <div
+            className={`fixed right-0 top-0 z-50 h-full w-[92vw] max-w-[380px] border-l border-sidebar-border bg-sidebar text-sidebar-foreground shadow-2xl transition-transform duration-300 ease-out lg:hidden ${isMobileSidebarOpen ? "translate-x-0" : "translate-x-full"
+              }`}
           >
-            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
-              <span className="font-bold text-slate-700">Filters & Options</span>
-              <button onClick={() => setIsMobileSidebarOpen(false)} className="p-2 bg-white rounded-full text-slate-500 hover:text-slate-900 shadow-sm border border-slate-200">
+            <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
+              <span className="text-sm font-extrabold uppercase tracking-[0.16em] text-sidebar-foreground/80">
+                Filters
+              </span>
+              <button
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/60 text-sidebar-foreground transition hover:bg-white"
+              >
                 <X size={18} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto w-full bg-slate-50/30">
-               {rightSidebar}
+
+            <div className="h-[calc(100%-73px)] overflow-y-auto px-4 py-4">
+              {rightSidebar}
             </div>
           </div>
         </>
       )}
-      
     </div>
   );
 }
