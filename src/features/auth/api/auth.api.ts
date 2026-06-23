@@ -1,5 +1,4 @@
 import { api as apiClient } from "@/lib/api/axios";
-import { BaseResponse } from "@/types/api.types";
 import {
   ChangePasswordRequest,
   ConfirmPasswordResetRequest,
@@ -10,7 +9,7 @@ import { AuthResponse, UserResponse } from "./response/auth.response";
 
 export const loginApi = async (data: LoginRequest): Promise<AuthResponse> => {
   const response = await apiClient.post<BaseResponse<AuthResponse>>("/auth/login", data);
-  return response as unknown as AuthResponse; 
+  return response as unknown as AuthResponse;
 };
 
 export const registerApi = async (data: RegisterRequest): Promise<UserResponse> => {

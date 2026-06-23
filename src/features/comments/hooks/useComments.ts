@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import axios from "axios";
-import { BaseErrorResponse } from "@/types/api.types";
 import {
   getCommentsByPostService,
   createCommentService,
@@ -35,12 +34,12 @@ const handleApiError = (error: unknown) => {
 export const calculateTotalCommentCount = (comments: CommentResponse[] = []): number => {
   let totalCount = 0;
   comments.forEach((comment) => {
-    totalCount += 1; 
+    totalCount += 1;
     if (comment.replies) {
-      totalCount += comment.replies.length; 
+      totalCount += comment.replies.length;
       comment.replies.forEach((reply) => {
         if (reply.nestedReplies) {
-          totalCount += reply.nestedReplies.length; 
+          totalCount += reply.nestedReplies.length;
         }
       });
     }

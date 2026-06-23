@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { BaseErrorResponse } from "@/types/api.types";
 import {
   getAllUsersService,
   searchUsersService,
@@ -42,7 +41,7 @@ export const useBanUser = () => {
     mutationFn: (id: number) => banUserService(id),
     onSuccess: () => {
       toast.success("User banned successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] }); 
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: handleApiError,
   });
@@ -54,7 +53,7 @@ export const useUnbanUser = () => {
     mutationFn: (id: number) => unbanUserService(id),
     onSuccess: () => {
       toast.success("User unbanned successfully");
-      queryClient.invalidateQueries({ queryKey: ["users"] }); 
+      queryClient.invalidateQueries({ queryKey: ["users"] });
     },
     onError: handleApiError,
   });
@@ -67,10 +66,10 @@ export const useUpdateProfile = () => {
     mutationFn: (data) => updateProfileService(data),
     onSuccess: async (updatedUser) => {
       toast.success("Profile updated successfully");
-      
+
       await update({
         user: {
-          ...session?.user, 
+          ...session?.user,
           id: updatedUser.id,
           email: updatedUser.email,
           displayName: updatedUser.displayName,
@@ -92,7 +91,7 @@ export const useUploadAvatar = () => {
     mutationFn: (file: File) => uploadAvatarService(file),
     onSuccess: async (updatedUser) => {
       toast.success("Profile picture updated successfully");
-      
+
       await update({
         user: {
           id: updatedUser.id,

@@ -1,5 +1,4 @@
 import { api as apiClient } from "@/lib/api/axios";
-import { PaginatedResponse } from "@/types/api.types";
 import { UpdateProfileRequest } from "./request/users.request";
 import { UserResponse } from "./response/users.response";
 

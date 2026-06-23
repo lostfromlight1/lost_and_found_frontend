@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient, QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 import axios from "axios";
-import { BaseErrorResponse } from "@/types/api.types";
 import {
   createPostService,
   updatePostService,
@@ -82,7 +81,7 @@ export const useUpdatePost = () => {
     onSuccess: () => {
       toast.success("Post updated successfully");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
-      queryClient.invalidateQueries({ queryKey: ["review-content"] }); 
+      queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
   });
@@ -108,23 +107,23 @@ export const useToggleLikePost = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    void, 
-    unknown, 
-    number, 
+    void,
+    unknown,
+    number,
     { previousQueries: [QueryKey, unknown][] }
   >({
     mutationFn: (postId) => toggleLikePostService(postId),
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
       await queryClient.cancelQueries({ queryKey: ["bookmarked-posts"] });
-      
-      const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] }); 
+
+      const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] });
       const previousBookmarkQueries = queryClient.getQueriesData({ queryKey: ["bookmarked-posts"] });
       const previousQueries = [...previousPostQueries, ...previousBookmarkQueries];
 
       previousQueries.forEach(([queryKey, oldData]) => {
-        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return; 
-        
+        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return;
+
         const pageData = oldData as PageResponse<PostResponseDto>;
         const filters = (queryKey[1] || {}) as PostFilters & { sortBy?: string };
 
@@ -138,7 +137,7 @@ export const useToggleLikePost = () => {
               ...post,
               liked: !isCurrentlyLiked,
               likeCount: newCount,
-              LikeCount: newCount, 
+              LikeCount: newCount,
             };
           }
           return post;
@@ -149,7 +148,7 @@ export const useToggleLikePost = () => {
             const countA = Number(a.likeCount ?? a.LikeCount ?? 0);
             const countB = Number(b.likeCount ?? b.LikeCount ?? 0);
             if (countB !== countA) return countB - countA;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); 
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           });
         }
 
@@ -178,23 +177,23 @@ export const useToggleBookmarkPost = () => {
   const queryClient = useQueryClient();
 
   return useMutation<
-    void, 
-    unknown, 
-    number, 
+    void,
+    unknown,
+    number,
     { previousQueries: [QueryKey, unknown][] }
   >({
     mutationFn: (postId) => toggleBookmarkPostService(postId),
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
       await queryClient.cancelQueries({ queryKey: ["bookmarked-posts"] });
-      
-      const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] }); 
+
+      const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] });
       const previousBookmarkQueries = queryClient.getQueriesData({ queryKey: ["bookmarked-posts"] });
       const previousQueries = [...previousPostQueries, ...previousBookmarkQueries];
 
       previousQueries.forEach(([queryKey, oldData]) => {
-        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return; 
-        
+        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return;
+
         const pageData = oldData as PageResponse<PostResponseDto>;
 
         const updatedContent = pageData.content.map((post) => {

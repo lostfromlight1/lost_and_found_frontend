@@ -1,12 +1,11 @@
 import { api as apiClient } from "@/lib/api/axios";
-import { BaseResponse, PaginatedResponse } from "@/types/api.types";
 import { GetNotificationsParams, SaveFcmTokenRequest } from "./request/notifications.request";
-import { 
-  NotificationSummary, 
-  NotificationDto, 
-  UnreadCountDto, 
-  NotificationActionResponse, 
-  FcmTokenResponse 
+import {
+  NotificationSummary,
+  NotificationDto,
+  UnreadCountDto,
+  NotificationActionResponse,
+  FcmTokenResponse
 } from "./response/notifications.response";
 
 const BASE_URL = "/notifications";

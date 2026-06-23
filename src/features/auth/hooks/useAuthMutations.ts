@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
 import { signIn, signOut, getSession } from "next-auth/react";
-import { BaseErrorResponse } from "@/types/api.types";
 import {
   changePasswordService,
   confirmPasswordResetService,
@@ -29,7 +28,7 @@ const handleApiError = (error: unknown) => {
 
       if (validationErrors && Object.keys(validationErrors).length > 0) {
         Object.values(validationErrors).forEach((msg) => toast.warning(String(msg)));
-      } 
+      }
       else {
         toast.warning(message || "We encountered a slight issue. Please try again.");
       }
@@ -62,7 +61,7 @@ export const useLogin = () => {
     onSuccess: () => {
       toast.success("Login successful");
       router.push("/dashboard");
-      router.refresh(); 
+      router.refresh();
     },
     onError: (error: Error) => {
       // INTERCEPT THE UNVERIFIED ERROR AND REDIRECT
@@ -94,7 +93,7 @@ export const useLogout = () => {
     onSuccess: () => {
       toast.success("Logged out successfully");
       router.push("/login");
-      router.refresh(); 
+      router.refresh();
     },
   });
 };
