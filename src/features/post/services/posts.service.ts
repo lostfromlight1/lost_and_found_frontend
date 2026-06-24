@@ -1,13 +1,13 @@
-import { 
-  createPostApi, 
-  updatePostApi, 
-  getAllPostsApi, 
-  getPostByIdApi, 
-  toggleLikePostApi, 
+import {
+  createPostApi,
+  updatePostApi,
+  getAllPostsApi,
+  getPostByIdApi,
+  toggleLikePostApi,
   deletePostApi,
-  toggleBookmarkPostApi, 
-  getBookmarksApi,       
-  getUserPostsApi        
+  toggleBookmarkPostApi,
+  getBookmarksApi,
+  getUserPostsApi
 } from "../api/posts.api";
 import { CreatePostRequest, UpdatePostRequest, PostFilters } from "../api/request/posts.request";
 import { PostResponseDto, PageResponse } from "../api/response/posts.response";
@@ -23,6 +23,7 @@ export const updatePostService = async (id: number, data: UpdatePostRequest): Pr
 export const getAllPostsService = async (filters: PostFilters): Promise<PageResponse<PostResponseDto>> => {
   return await getAllPostsApi(filters);
 };
+
 
 export const toggleLikePostService = async (id: number): Promise<void> => {
   return await toggleLikePostApi(id);

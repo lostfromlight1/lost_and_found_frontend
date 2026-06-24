@@ -21,8 +21,8 @@ export default function AdminPage() {
   return (
     // Outer container matches the look of the Feed, but takes full width
     <div className="w-full h-full">
-      <div className="w-full h-full bg-white border border-slate-200 shadow-sm sm:rounded-2xl flex flex-col overflow-hidden">
-        
+      <div className="w-full h-full bg-white border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+
         {/* Header Section */}
         <div className="p-6 md:p-10 border-b border-slate-100 bg-slate-50/30">
           <DashboardHeader
@@ -38,11 +38,10 @@ export default function AdminPage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveView(item.id)}
-                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-full text-[14px] transition-all ${
-                    isActive
+                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-full text-[14px] transition-all ${isActive
                       ? "bg-slate-900 text-white font-bold shadow-md"
                       : "bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 font-medium"
-                  }`}
+                    }`}
                 >
                   <item.icon size={18} weight={isActive ? "fill" : "regular"} />
                   {item.label}

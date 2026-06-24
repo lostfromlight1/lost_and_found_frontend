@@ -5,6 +5,7 @@ import {
   createPostService,
   updatePostService,
   getAllPostsService,
+  getPostByIdService,
   deletePostService,
   toggleLikePostService,
   toggleBookmarkPostService,
@@ -33,6 +34,56 @@ const handleApiError = (error: unknown) => {
   }
 };
 
+const updatePostInPageResponse = (
+  oldData: unknown,
+  updater: (post: PostResponseDto) => PostResponseDto,
+) => {
+  if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return oldData;
+
+  const pageData = oldData as PageResponse<PostResponseDto>;
+
+  return {
+    ...pageData,
+    content: pageData.content.map((post) =>
+      post.id === updater(post).id ? updater(post) : post,
+    ),
+  };
+};
+
+const updatePostInAllPagedQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  queryPrefix: QueryKey,
+  postId: number,
+  updater: (post: PostResponseDto) => PostResponseDto,
+) => {
+  const queries = queryClient.getQueriesData({ queryKey: queryPrefix });
+
+  queries.forEach(([queryKey, oldData]) => {
+    if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return;
+
+    const pageData = oldData as PageResponse<PostResponseDto>;
+    let updatedContent = pageData.content.map((post) =>
+      post.id === postId ? updater(post) : post,
+    );
+
+    const filters = (queryKey[1] || {}) as PostFilters & { sortBy?: string };
+
+    if (filters.sortBy === "TOP") {
+      updatedContent = [...updatedContent].sort((a, b) => {
+        const countA = Number(a.likeCount ?? a.LikeCount ?? 0);
+        const countB = Number(b.likeCount ?? b.LikeCount ?? 0);
+        if (countB !== countA) return countB - countA;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+    }
+
+    queryClient.setQueryData(queryKey, {
+      ...pageData,
+      content: updatedContent,
+    });
+  });
+};
+
 // --- QUERIES ---
 
 export const usePosts = (filters: PostFilters) => {
@@ -40,6 +91,14 @@ export const usePosts = (filters: PostFilters) => {
     queryKey: ["posts", filters],
     queryFn: () => getAllPostsService(filters),
     refetchInterval: 15000,
+  });
+};
+
+export const usePost = (postId: number) => {
+  return useQuery<PostResponseDto, Error>({
+    queryKey: ["post", postId],
+    queryFn: () => getPostByIdService(postId),
+    enabled: !!postId,
   });
 };
 
@@ -68,6 +127,7 @@ export const useCreatePost = () => {
     onSuccess: () => {
       toast.success("Post created successfully");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
     },
     onError: handleApiError,
   });
@@ -78,9 +138,12 @@ export const useUpdatePost = () => {
 
   return useMutation<PostResponseDto, unknown, { id: number; data: UpdatePostRequest }>({
     mutationFn: ({ id, data }) => updatePostService(id, data),
-    onSuccess: () => {
+    onSuccess: (updatedPost) => {
       toast.success("Post updated successfully");
+
+      queryClient.setQueryData(["post", updatedPost.id], updatedPost);
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
       queryClient.invalidateQueries({ queryKey: ["review-content"] });
     },
     onError: handleApiError,
@@ -92,8 +155,10 @@ export const useDeletePost = () => {
 
   return useMutation<void, unknown, number>({
     mutationFn: (id) => deletePostService(id),
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       toast.success("Post deleted successfully");
+
+      queryClient.removeQueries({ queryKey: ["post", deletedId] });
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
       queryClient.invalidateQueries({ queryKey: ["review-content"] });
@@ -102,7 +167,6 @@ export const useDeletePost = () => {
   });
 };
 
-// --- OPTIMISTIC LIKE MUTATION ---
 export const useToggleLikePost = () => {
   const queryClient = useQueryClient();
 
@@ -110,69 +174,65 @@ export const useToggleLikePost = () => {
     void,
     unknown,
     number,
-    { previousQueries: [QueryKey, unknown][] }
+    {
+      previousQueries: [QueryKey, unknown][];
+      previousDetail?: PostResponseDto;
+    }
   >({
     mutationFn: (postId) => toggleLikePostService(postId),
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
       await queryClient.cancelQueries({ queryKey: ["bookmarked-posts"] });
+      await queryClient.cancelQueries({ queryKey: ["post", postId] });
 
       const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] });
       const previousBookmarkQueries = queryClient.getQueriesData({ queryKey: ["bookmarked-posts"] });
       const previousQueries = [...previousPostQueries, ...previousBookmarkQueries];
+      const previousDetail = queryClient.getQueryData<PostResponseDto>(["post", postId]);
 
-      previousQueries.forEach(([queryKey, oldData]) => {
-        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return;
+      const optimisticUpdater = (post: PostResponseDto): PostResponseDto => {
+        const isCurrentlyLiked = post.liked;
+        const currentCount = Number(post.likeCount ?? post.LikeCount ?? 0);
+        const newCount = isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
 
-        const pageData = oldData as PageResponse<PostResponseDto>;
-        const filters = (queryKey[1] || {}) as PostFilters & { sortBy?: string };
+        return {
+          ...post,
+          liked: !isCurrentlyLiked,
+          likeCount: newCount,
+          LikeCount: newCount,
+        };
+      };
 
-        const updatedContent = pageData.content.map((post) => {
-          if (post.id === postId) {
-            const isCurrentlyLiked = post.liked;
-            const currentCount = Number(post.likeCount ?? post.LikeCount ?? 0);
-            const newCount = isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1;
+      updatePostInAllPagedQueries(queryClient, ["posts"], postId, optimisticUpdater);
+      updatePostInAllPagedQueries(queryClient, ["bookmarked-posts"], postId, optimisticUpdater);
 
-            return {
-              ...post,
-              liked: !isCurrentlyLiked,
-              likeCount: newCount,
-              LikeCount: newCount,
-            };
-          }
-          return post;
-        });
+      if (previousDetail) {
+        queryClient.setQueryData(["post", postId], optimisticUpdater(previousDetail));
+      }
 
-        if (filters.sortBy === "TOP") {
-          updatedContent.sort((a, b) => {
-            const countA = Number(a.likeCount ?? a.LikeCount ?? 0);
-            const countB = Number(b.likeCount ?? b.LikeCount ?? 0);
-            if (countB !== countA) return countB - countA;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          });
-        }
-
-        queryClient.setQueryData(queryKey, { ...pageData, content: updatedContent });
-      });
-
-      return { previousQueries };
+      return { previousQueries, previousDetail };
     },
-    onError: (err, _postId, context) => {
+    onError: (err, postId, context) => {
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
+
+      if (context?.previousDetail) {
+        queryClient.setQueryData(["post", postId], context.previousDetail);
+      }
+
       handleApiError(err);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, postId) => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post", postId] });
     },
   });
 };
 
-// --- OPTIMISTIC BOOKMARK MUTATION ---
 export const useToggleBookmarkPost = () => {
   const queryClient = useQueryClient();
 
@@ -180,45 +240,53 @@ export const useToggleBookmarkPost = () => {
     void,
     unknown,
     number,
-    { previousQueries: [QueryKey, unknown][] }
+    {
+      previousQueries: [QueryKey, unknown][];
+      previousDetail?: PostResponseDto;
+    }
   >({
     mutationFn: (postId) => toggleBookmarkPostService(postId),
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
       await queryClient.cancelQueries({ queryKey: ["bookmarked-posts"] });
+      await queryClient.cancelQueries({ queryKey: ["post", postId] });
 
       const previousPostQueries = queryClient.getQueriesData({ queryKey: ["posts"] });
       const previousBookmarkQueries = queryClient.getQueriesData({ queryKey: ["bookmarked-posts"] });
       const previousQueries = [...previousPostQueries, ...previousBookmarkQueries];
+      const previousDetail = queryClient.getQueryData<PostResponseDto>(["post", postId]);
 
-      previousQueries.forEach(([queryKey, oldData]) => {
-        if (!oldData || !(oldData as PageResponse<PostResponseDto>).content) return;
-
-        const pageData = oldData as PageResponse<PostResponseDto>;
-
-        const updatedContent = pageData.content.map((post) => {
-          if (post.id === postId) {
-            return { ...post, bookmarked: !post.bookmarked };
-          }
-          return post;
-        });
-
-        queryClient.setQueryData(queryKey, { ...pageData, content: updatedContent });
+      const optimisticUpdater = (post: PostResponseDto): PostResponseDto => ({
+        ...post,
+        bookmarked: !post.bookmarked,
       });
 
-      return { previousQueries };
+      updatePostInAllPagedQueries(queryClient, ["posts"], postId, optimisticUpdater);
+      updatePostInAllPagedQueries(queryClient, ["bookmarked-posts"], postId, optimisticUpdater);
+
+      if (previousDetail) {
+        queryClient.setQueryData(["post", postId], optimisticUpdater(previousDetail));
+      }
+
+      return { previousQueries, previousDetail };
     },
-    onError: (err, _postId, context) => {
+    onError: (err, postId, context) => {
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {
           queryClient.setQueryData(queryKey, data);
         });
       }
+
+      if (context?.previousDetail) {
+        queryClient.setQueryData(["post", postId], context.previousDetail);
+      }
+
       handleApiError(err);
     },
-    onSettled: () => {
+    onSettled: (_data, _error, postId) => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post", postId] });
     },
   });
 };
