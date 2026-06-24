@@ -1,6 +1,7 @@
 import {
   getAllUsersApi,
   searchUsersApi,
+  getPublicProfileApi,
   banUserApi,
   unbanUserApi,
   updateProfileApi,
@@ -14,6 +15,10 @@ export const getAllUsersService = async (page = 0) => {
 
 export const searchUsersService = async (query: string, page = 0) => {
   return await searchUsersApi(query, page);
+};
+
+export const getPublicProfileService = async (id: number) => {
+  return await getPublicProfileApi(id);
 };
 
 export const banUserService = async (id: number) => {

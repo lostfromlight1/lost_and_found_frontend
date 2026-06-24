@@ -5,6 +5,7 @@ import axios from "axios";
 import {
   getAllUsersService,
   searchUsersService,
+  getPublicProfileService,
   banUserService,
   unbanUserService,
   updateProfileService,
@@ -18,7 +19,7 @@ const handleApiError = (error: unknown) => {
     const responseData = error.response?.data as BaseErrorResponse | undefined;
     if (responseData?.validationErrors) {
       Object.values(responseData.validationErrors).forEach((msg) =>
-        toast.warning(String(msg))
+        toast.warning(String(msg)),
       );
     } else {
       toast.warning(responseData?.message || "An error occurred");
@@ -31,12 +32,22 @@ const handleApiError = (error: unknown) => {
 export const useUsers = (query: string, page = 0) => {
   return useQuery({
     queryKey: ["users", query, page],
-    queryFn: () => (query.trim() ? searchUsersService(query, page) : getAllUsersService(page)),
+    queryFn: () =>
+      query.trim() ? searchUsersService(query, page) : getAllUsersService(page),
+  });
+};
+
+export const usePublicUserProfile = (userId: number) => {
+  return useQuery<UserResponse, Error>({
+    queryKey: ["users", "public-profile", userId],
+    queryFn: () => getPublicProfileService(userId),
+    enabled: Number.isFinite(userId) && userId > 0,
   });
 };
 
 export const useBanUser = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: number) => banUserService(id),
     onSuccess: () => {
@@ -49,6 +60,7 @@ export const useBanUser = () => {
 
 export const useUnbanUser = () => {
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: (id: number) => unbanUserService(id),
     onSuccess: () => {
@@ -61,6 +73,7 @@ export const useUnbanUser = () => {
 
 export const useUpdateProfile = () => {
   const { data: session, update } = useSession();
+  const queryClient = useQueryClient();
 
   return useMutation<UserResponse, unknown, UpdateProfileRequest>({
     mutationFn: (data) => updateProfileService(data),
@@ -76,24 +89,33 @@ export const useUpdateProfile = () => {
           contactInfo: updatedUser.contactInfo ?? "",
           role: updatedUser.role,
           avatarUrl: updatedUser.avatarUrl ?? session?.user?.avatarUrl ?? null,
-          avatarPublicId: updatedUser.avatarPublicId ?? session?.user?.avatarPublicId ?? null,
+          avatarPublicId:
+            updatedUser.avatarPublicId ?? session?.user?.avatarPublicId ?? null,
           isLocked: updatedUser.isLocked,
         },
       });
+
+      queryClient.setQueryData(
+        ["users", "public-profile", updatedUser.id],
+        updatedUser,
+      );
     },
     onError: handleApiError,
   });
 };
-export const useUploadAvatar = () => {
-  const { update } = useSession();
 
-  return useMutation({
+export const useUploadAvatar = () => {
+  const { data: session, update } = useSession();
+  const queryClient = useQueryClient();
+
+  return useMutation<UserResponse, unknown, File>({
     mutationFn: (file: File) => uploadAvatarService(file),
     onSuccess: async (updatedUser) => {
       toast.success("Profile picture updated successfully");
 
       await update({
         user: {
+          ...session?.user,
           id: updatedUser.id,
           email: updatedUser.email,
           displayName: updatedUser.displayName,
@@ -104,6 +126,11 @@ export const useUploadAvatar = () => {
           isLocked: updatedUser.isLocked,
         },
       });
+
+      queryClient.setQueryData(
+        ["users", "public-profile", updatedUser.id],
+        updatedUser,
+      );
     },
     onError: handleApiError,
   });

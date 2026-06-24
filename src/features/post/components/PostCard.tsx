@@ -52,6 +52,7 @@ import CommentCard, {
   CurrentUser,
 } from "@/features/comments/components/CommentCard";
 import { Button } from "@/components/ui/button";
+import UserMiniProfilePopover from "@/features/users/components/UserMiniProfilePopover";
 
 const MapDisplay = dynamic(() => import("@/components/map/MapDisplay"), {
   ssr: false,
@@ -286,27 +287,39 @@ export default function PostCard({
       >
         <div className="px-4 sm:px-5 flex flex-row items-start justify-between">
           <div className="flex gap-3 sm:gap-4 items-center">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
-              <Avatar className="w-full h-full rounded-full ring-1 ring-slate-100 overflow-hidden aspect-square">
-                <AvatarImage
-                  src={post.user?.avatarUrl || undefined}
-                  alt={post.user?.displayName}
-                  className="object-cover w-full h-full"
-                />
-                <AvatarFallback className="flex items-center justify-center bg-slate-50 text-slate-700 font-medium w-full h-full">
-                  {post.user?.displayName?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <UserMiniProfilePopover
+              userId={post.user.id}
+              displayName={post.user?.displayName}
+              avatarUrl={post.user?.avatarUrl}
+            >
+              <button
+                type="button"
+                className="flex items-center gap-3 sm:gap-4 rounded-2xl transition-colors hover:bg-slate-50 -ml-1 px-1.5 py-1 text-left"
+                aria-label={`Open profile preview for ${post.user?.displayName || "user"}`}
+              >
+                <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
+                  <Avatar className="w-full h-full rounded-full ring-1 ring-slate-100 overflow-hidden aspect-square">
+                    <AvatarImage
+                      src={post.user?.avatarUrl || undefined}
+                      alt={post.user?.displayName}
+                      className="object-cover w-full h-full"
+                    />
+                    <AvatarFallback className="flex items-center justify-center bg-slate-50 text-slate-700 font-medium w-full h-full">
+                      {post.user?.displayName?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
 
-            <div className="flex flex-col">
-              <span className="font-semibold text-[15px] text-slate-900 leading-tight">
-                {post.user?.displayName || "Unknown User"}
-              </span>
-              <span className="text-[13px] text-slate-500 leading-tight mt-1">
-                {createdAtLabel}
-              </span>
-            </div>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-[15px] text-slate-900 leading-tight hover:text-[#1d9bf0] transition-colors">
+                    {post.user?.displayName || "Unknown User"}
+                  </span>
+                  <span className="text-[13px] text-slate-500 leading-tight mt-1">
+                    {createdAtLabel}
+                  </span>
+                </div>
+              </button>
+            </UserMiniProfilePopover>
           </div>
 
           <div className="flex items-center gap-2">
