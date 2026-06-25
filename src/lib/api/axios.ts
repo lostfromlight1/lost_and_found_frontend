@@ -26,22 +26,34 @@ const notify = (token: string | null) => {
   subscribers = [];
 };
 
-api.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    const session = await getSession();
-    if (session?.accessToken) {
-      config.headers.Authorization = `Bearer ${session.accessToken}`;
-    }
-    return config;
+const isProtectedPath = (pathname: string) => {
+  return (
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/bookmarks") ||
+    pathname.startsWith("/notifications") ||
+    pathname.startsWith("/admin")
+  );
+};
+
+api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  const session = await getSession();
+
+  if (session?.accessToken) {
+    config.headers.Authorization = `Bearer ${session.accessToken}`;
   }
-);
+
+  return config;
+});
 
 api.interceptors.response.use(
   (res) => (res.data?.data !== undefined ? res.data.data : res.data),
   async (error: AxiosError<BaseErrorResponse>) => {
     if (!error.config) return Promise.reject(error);
 
-    const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const original = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
     const isUnauthorized =
       error.response?.status === 401 ||
@@ -68,7 +80,9 @@ api.interceptors.response.use(
       try {
         const session = await getSession();
         const currentToken = session?.accessToken;
-        const failedToken = original.headers.Authorization?.toString().replace("Bearer ", "");
+        const failedToken = original.headers.Authorization
+          ?.toString()
+          .replace("Bearer ", "");
 
         if (currentToken && currentToken !== failedToken) {
           notify(currentToken);
@@ -77,7 +91,10 @@ api.interceptors.response.use(
         }
 
         const res = await fetch(`/api/auth/session?update=${Date.now()}`);
-        const updatedSession = await res.json() as { accessToken?: string; error?: string };
+        const updatedSession = (await res.json()) as {
+          accessToken?: string;
+          error?: string;
+        };
 
         if (!updatedSession?.accessToken || updatedSession.error) {
           throw new Error("Refresh failed");
@@ -88,7 +105,14 @@ api.interceptors.response.use(
         return api(original);
       } catch (err) {
         notify(null);
-        await signOut({ callbackUrl: "/login?error=SessionExpired" });
+
+        const pathname =
+          typeof window !== "undefined" ? window.location.pathname : "";
+
+        if (isProtectedPath(pathname)) {
+          await signOut({ callbackUrl: "/login?error=SessionExpired" });
+        }
+
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

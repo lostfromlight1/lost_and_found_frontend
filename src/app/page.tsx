@@ -24,7 +24,7 @@ const faqs = [
   {
     question: "Is this service free?",
     answer:
-      "Yes, completely. Reunite is free to post, search, and message — we believe getting your things back shouldn't cost you a thing.",
+      "Yes, completely. Back2U is free to post, search, and message — we believe getting your things back shouldn't cost you a thing.",
   },
   {
     question: "How do we safely meet up to hand the item over?",
@@ -39,7 +39,7 @@ const stories = [
     name: "Maya R.",
     location: "Tampa",
     panic: "I left my daughter's favorite stuffed rabbit at Restaurant Joe's. She was already crying in the bus.",
-    fix: "I posted on Reunite from the cafe. Forty minutes later, a barista at the airport cafe messaged me — she'd put it behind the counter.",
+    fix: "I posted on Back2U from the cafe. Forty minutes later, a barista at the airport cafe messaged me — she'd put it behind the counter.",
     relief: "Picked up the next morning. My daughter never knew. More than just an adventure. Total lifesaver.",
     color: "bg-amber-50 text-amber-800 border border-amber-200",
   },
@@ -49,7 +49,7 @@ const stories = [
     location: "Brooklyn",
     panic: "Wallet gone after a long shift: license, two cards, and a photo of my late dad that I cannot replace.",
     fix: "I posted around tonight. A rideshare driver saw it first, recognized the description, drove it back to me before work.",
-    relief: "He wouldn't even take a tip. I keep the photo in a zipped pocket now. Reunite gave me the back a piece of him.",
+    relief: "He wouldn't even take a tip. I keep the photo in a zipped pocket now. Back2U gave me the back a piece of him.",
     color: "bg-blue-50 text-blue-800 border border-blue-200",
   },
   {
@@ -57,7 +57,7 @@ const stories = [
     name: "Priya S.",
     location: "Manchester",
     panic: "Lost my engagement ring at the gym. I sat in the parking lot for an hour just staring jacket keys.",
-    fix: "A cleaner had found it and posted it on Reunite that afternoon. The identifying-detail check matched on the first try.",
+    fix: "A cleaner had found it and posted it on Back2U that afternoon. The identifying-detail check matched on the first try.",
     relief: "Met at the Tesco down the road next day. I hugged a stranger. I'll never not rave about this app.",
     color: "bg-rose-50 text-rose-800 border border-rose-200",
   },
@@ -206,7 +206,7 @@ export default function LandingPage() {
               className={`text-slate-600 text-base md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium transition-all duration-700 ease-out delay-300 transform ${isMounted ? "opacity-[0.95] translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-[0.98]"
                 }`}
             >
-              Reunite is a community lost &amp; found for your city — wallets, keys, the stuffed rabbit, the wedding ring. Post once in 30 seconds, and neighbors start looking for it.
+              Back2U is a community lost &amp; found for your city — wallets, keys, the stuffed rabbit, the wedding ring. Post once in 30 seconds, and neighbors start looking for it.
             </p>
 
             {/* Action Buttons */}
@@ -215,7 +215,7 @@ export default function LandingPage() {
                 }`}
             >
               <Button asChild size="lg" className="group/btn w-full sm:w-auto bg-[#1d9bf0] text-white hover:bg-[#1a8cd8] font-bold rounded-full px-8 py-6 transition-all duration-300 shadow-md hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 text-base border border-transparent">
-                <Link href="/login" className="flex items-center justify-center gap-2">
+                <Link href="/dashboard" className="flex items-center justify-center gap-2">
                   Get Started
                   <MoveRight className="w-4 h-4 transition-transform duration-300 ease-out group-hover/btn:translate-x-1.5" />
                 </Link>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <p className="text-xs font-bold text-[#1d9bf0] uppercase tracking-widest mb-1.5">Live feed</p>
                 <h2 className="text-3xl font-serif font-bold text-slate-900">Reported in the last few hours</h2>
               </div>
-              <Link href="/login" className="group/link text-sm font-bold text-slate-500 hover:text-[#1d9bf0] transition-colors duration-300 flex items-center gap-1.5 self-start sm:self-auto">
+              <Link href="/dashboard" className="group/link text-sm font-bold text-slate-500 hover:text-[#1d9bf0] transition-colors duration-300 flex items-center gap-1.5 self-start sm:self-auto">
                 View all active items
                 <ArrowRight size={16} className="transition-transform duration-300 group-hover/link:translate-x-1" />
               </Link>
@@ -295,7 +295,7 @@ export default function LandingPage() {
 
                 return (
                   <ScrollReveal key={item.id} delay={index * 100}>
-                    <Link href="/login" className="group relative overflow-hidden rounded-[24px] border border-slate-200 bg-white text-slate-700 p-5 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-1.5 active:translate-y-0 flex flex-col gap-4 will-change-transform">
+                    <Link href="/dashboard" className="group relative overflow-hidden rounded-[24px] border border-slate-200 bg-white text-slate-700 p-5 shadow-sm transition-all duration-300 ease-out hover:shadow-md hover:-translate-y-1.5 active:translate-y-0 flex flex-col gap-4 will-change-transform">
                       <div className="flex items-center justify-between gap-2 z-10">
                         <span className={`text-[10px] font-extrabold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full border ${typeChipClass} transition-colors duration-300`}>
                           {item.type}

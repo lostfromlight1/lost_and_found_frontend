@@ -85,7 +85,7 @@ export default function DateRangePickerForm<TFieldValues extends FieldValues>({
                     id="date"
                     variant="outline"
                     className={cn(
-                      "h-11 w-full justify-start rounded-md px-3 text-left font-normal",
+                      "h-8 w-full justify-start rounded-md px-2 text-left font-normal",
                       !typedValue && "text-muted-foreground",
                       buttonClassName
                     )}

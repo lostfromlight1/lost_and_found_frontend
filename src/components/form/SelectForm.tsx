@@ -60,14 +60,10 @@ export default function SelectForm<TFieldValues extends FieldValues>({
       control={control}
       rules={activeRules}
       render={({ field }) => {
-        // Ensure value is ALWAYS a string, never undefined. 
-        // "" keeps it strictly controlled on the first render, avoiding the React warning.
-        // Since no option has value="", it will naturally show the placeholder.
-        const safeValue = field.value !== undefined && field.value !== null 
-            ? String(field.value) 
-            : "";
+        const safeValue = field.value !== undefined && field.value !== null
+          ? String(field.value)
+          : "";
 
-        // FIXED: Manually find the matching option to bypass Radix UI's display bug with dynamic options
         const selectedOption = options.find((opt) => opt.value === safeValue);
 
         return (
@@ -78,7 +74,7 @@ export default function SelectForm<TFieldValues extends FieldValues>({
                 {required && <span className="ml-1 text-destructive">*</span>}
               </FieldLabel>
             ) : null}
-            
+
             <Select
               disabled={disabled}
               onValueChange={field.onChange}
@@ -86,7 +82,6 @@ export default function SelectForm<TFieldValues extends FieldValues>({
             >
               <FieldControl>
                 <SelectTrigger className={triggerClassName ?? "w-full"}>
-                  {/* Pass the label directly as children so it doesn't default to the raw ID */}
                   <SelectValue placeholder={placeholder}>
                     {selectedOption ? selectedOption.label : undefined}
                   </SelectValue>
@@ -100,7 +95,7 @@ export default function SelectForm<TFieldValues extends FieldValues>({
                 ))}
               </SelectContent>
             </Select>
-            
+
             {description ? (
               <FieldDescription>{description}</FieldDescription>
             ) : null}

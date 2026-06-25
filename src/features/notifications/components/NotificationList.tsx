@@ -12,7 +12,7 @@ export function NotificationList() {
   const [activeTab, setActiveTab] = useState<"all" | "mentions">("all");
   const [filterUnread, setFilterUnread] = useState(false);
   const [typeFilter, setTypeFilter] = useState<FilterType>("ALL");
-  
+
   const { data, isLoading } = useNotifications({ page: 0, size: 50 });
   const { mutate: markAllAsRead, isPending } = useMarkAllAsRead();
 
@@ -45,7 +45,7 @@ export function NotificationList() {
   return (
     <MainLayout
       rightSidebar={
-        <NotificationRightSidebar 
+        <NotificationRightSidebar
           filterUnread={filterUnread}
           setFilterUnread={setFilterUnread}
           typeFilter={typeFilter}
@@ -57,7 +57,6 @@ export function NotificationList() {
         />
       }
     >
-      {/* Sticky Header & Tabs - Removed rounded borders */}
       <div className="sticky top-0 bg-white/90 backdrop-blur-md z-30 border-b border-slate-100 flex flex-col shrink-0">
         <div className="flex items-center justify-between px-5 py-3">
           <h1 className="text-[20px] font-extrabold text-slate-900 tracking-tight">Notifications</h1>
@@ -65,17 +64,17 @@ export function NotificationList() {
             <Settings size={20} />
           </button>
         </div>
-        
+
         <div className="flex items-center cursor-pointer">
-          <div 
-            onClick={() => setActiveTab("all")} 
+          <div
+            onClick={() => setActiveTab("all")}
             className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-3 pb-3 relative"
           >
             <span className={activeTab === "all" ? "text-slate-900" : "text-slate-500 font-medium"}>All</span>
             {activeTab === "all" && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-1 bg-[#1d9bf0] rounded-t-sm" />}
           </div>
-          <div 
-            onClick={() => setActiveTab("mentions")} 
+          <div
+            onClick={() => setActiveTab("mentions")}
             className="flex-1 hover:bg-slate-50 transition-colors text-center font-bold text-[15px] pt-3 pb-3 relative"
           >
             <span className={activeTab === "mentions" ? "text-slate-900" : "text-slate-500 font-medium"}>Mentions</span>
@@ -85,17 +84,17 @@ export function NotificationList() {
       </div>
 
       {/* Feed List */}
-      <div className="flex flex-col pb-20 shrink-0 bg-white min-h-[70vh] border-x border-b border-slate-200">
+      <div className="flex flex-col pb-20 shrink-0 bg-white min-h-[70vh]">
         {isLoading ? (
           <div className="text-center py-12 text-slate-500 font-medium">Loading notifications...</div>
         ) : displayNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center px-4">
-            <div className="w-16 h-16 bg-slate-50 flex items-center justify-center mb-4 border border-slate-100">
-               <Bell className="text-slate-300 w-8 h-8" />
+            <div className="w-16 h-16 flex items-center justify-center mb-4">
+              <Bell className="text-slate-300 w-8 h-8" />
             </div>
             <h3 className="font-bold text-slate-900 text-lg">Nothing to see here — yet</h3>
             <p className="text-slate-500 mt-1 max-w-sm">
-              {activeTab === "mentions" 
+              {activeTab === "mentions"
                 ? "When someone mentions you, it will show up here."
                 : "When someone interacts with your posts or comments, you'll find it here."}
             </p>

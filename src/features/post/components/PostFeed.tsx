@@ -126,24 +126,12 @@ export default function PostFeed() {
               />
               <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                 <div className="flex gap-2 text-[#1d9bf0] -ml-2 mt-1">
-                  <button
-                    onClick={() => setIsLocalCreateModalOpen(true)}
-                    className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors"
-                  >
-                    <ImageIcon size={20} />
-                  </button>
-                  <button
-                    onClick={() => setIsLocalCreateModalOpen(true)}
-                    className="p-2 hover:bg-blue-50 rounded-full cursor-pointer transition-colors"
-                  >
-                    <MapPin size={20} />
-                  </button>
                 </div>
                 <button
                   onClick={() => setIsLocalCreateModalOpen(true)}
                   className="bg-[#1d9bf0] text-white px-5 py-1.5 rounded-full font-bold text-[14px] hover:bg-[#1a8cd8] transition-colors mt-1"
                 >
-                  Post
+                  New Post
                 </button>
               </div>
             </div>

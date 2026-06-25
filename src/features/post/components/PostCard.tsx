@@ -26,6 +26,8 @@ import {
   Tag,
   HandHelping,
   ExternalLink,
+  Copy,
+  Send,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -33,6 +35,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { PostResponseDto } from "@/features/post/api/response/posts.response";
 import {
@@ -65,22 +68,18 @@ const MapDisplay = dynamic(() => import("@/components/map/MapDisplay"), {
 
 const safeDateTime = (dateStr?: string | null) => {
   if (!dateStr) return null;
-
   const parsed =
     dateStr.length === 10
       ? new Date(`${dateStr}T00:00:00`)
       : new Date(dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`);
-
   return isValid(parsed) ? parsed : null;
 };
 
 const safeDateOnly = (dateStr?: string | null) => {
   if (!dateStr) return null;
-
   const parsed = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
     ? parseISO(dateStr)
     : new Date(dateStr);
-
   return isValid(parsed) ? parsed : null;
 };
 
@@ -102,24 +101,15 @@ type InfoRowProps = {
   action?: React.ReactNode;
 };
 
-function InfoRow({
-  icon,
-  label,
-  value,
-  valueClassName = "",
-  action,
-}: InfoRowProps) {
+function InfoRow({ icon, label, value, valueClassName = "", action }: InfoRowProps) {
   return (
     <div className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-start sm:gap-4 sm:px-5">
       <div className="flex items-center gap-2 text-slate-500 font-bold text-[11px] uppercase tracking-[0.16em] shrink-0 sm:w-28">
         <span className="text-[#1d9bf0]">{icon}</span>
         <span>{label}</span>
       </div>
-
       <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
-        <div
-          className={`min-w-0 text-[14px] sm:text-[15px] leading-6 text-slate-800 ${valueClassName}`}
-        >
+        <div className={`min-w-0 text-[14px] sm:text-[15px] leading-6 text-slate-800 ${valueClassName}`}>
           {value}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -128,15 +118,72 @@ function InfoRow({
   );
 }
 
+// ─── Status badge config ───────────────────────────────────────────────────────
+function StatusBadge({ status }: { status?: string }) {
+  const s = status?.toUpperCase() ?? "OPEN";
+
+  const cfg: Record<string, { dot: string; pill: string; label: string }> = {
+    OPEN: {
+      dot: "bg-blue-500",
+      pill: "bg-blue-50 text-blue-700 border-blue-200",
+      label: "Open",
+    },
+    CLOSED: {
+      dot: "bg-slate-400",
+      pill: "bg-slate-100 text-slate-600 border-slate-200",
+      label: "Closed",
+    },
+    RESOLVED: {
+      dot: "bg-emerald-500",
+      pill: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      label: "Resolved",
+    },
+  };
+
+  const { dot, pill, label } = cfg[s] ?? cfg.OPEN;
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[11px] font-semibold border rounded-full ${pill}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot} shrink-0`} />
+      {label}
+    </span>
+  );
+}
+
+// ─── Type badge config ─────────────────────────────────────────────────────────
+function TypeBadge({ type }: { type?: string }) {
+  const t = type?.toUpperCase() ?? "";
+  const isLost = t === "LOST";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold border rounded-full ${isLost
+        ? "bg-red-50 text-red-600 border-red-200"
+        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+        }`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${isLost ? "bg-red-500" : "bg-emerald-500"} shrink-0`} />
+      {isLost ? "Lost" : "Found"}
+    </span>
+  );
+}
+
+// ─── Category badge config ─────────────────────────────────────────────────────
+function CategoryBadge({ name }: { name?: string }) {
+  if (!name) return null;
+  return (
+    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700 bg-violet-50 border border-violet-200 rounded-full">
+      <Tag size={10} className="shrink-0" />
+      {name}
+    </span>
+  );
+}
+
 type PostCardProps = {
   post: PostResponseDto;
   mode?: "feed" | "detail";
 };
 
-export default function PostCard({
-  post,
-  mode = "feed",
-}: PostCardProps) {
+export default function PostCard({ post, mode = "feed" }: PostCardProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const [showComments, setShowComments] = useState(mode === "detail");
@@ -165,23 +212,11 @@ export default function PostCard({
   const isAdmin = currentUser?.role === "ADMIN";
   const canManage = isOwner || isAdmin;
 
-  const isLost = post.type?.toUpperCase() === "LOST";
-  const typeStyles = isLost
-    ? "bg-red-50 text-red-600 border-red-100"
-    : "bg-emerald-50 text-emerald-600 border-emerald-100";
-
   const displayedComments = comments?.slice(0, visibleCommentsCount) || [];
   const hasMoreComments = (comments?.length || 0) > visibleCommentsCount;
 
-  const createdAtLabel = useMemo(
-    () => formatDateTime(post.createdAt),
-    [post.createdAt],
-  );
-
-  const lostFoundDateLabel = useMemo(
-    () => formatDateOnly(post.lostFoundDate),
-    [post.lostFoundDate],
-  );
+  const createdAtLabel = useMemo(() => formatDateTime(post.createdAt), [post.createdAt]);
+  const lostFoundDateLabel = useMemo(() => formatDateOnly(post.lostFoundDate), [post.lostFoundDate]);
 
   const hasCoordinates =
     typeof post.latitude === "number" &&
@@ -192,9 +227,47 @@ export default function PostCard({
   const rewardAmount = post.reward ?? 0;
   const postHref = `/posts/${post.id}`;
 
+  const getShareUrl = () =>
+    typeof window !== "undefined"
+      ? `${window.location.origin}${postHref}`
+      : postHref;
+
+  // ─── Share handlers ──────────────────────────────────────────────────────────
+  const handleShareFacebook = () => {
+    const url = encodeURIComponent(getShareUrl());
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareTwitter = () => {
+    const url = encodeURIComponent(getShareUrl());
+    const text = encodeURIComponent(post.title);
+    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareWhatsApp = () => {
+    const url = encodeURIComponent(getShareUrl());
+    const text = encodeURIComponent(`${post.title} — ${getShareUrl()}`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleShareTelegram = () => {
+    const url = encodeURIComponent(getShareUrl());
+    const text = encodeURIComponent(post.title);
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getShareUrl());
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Unable to copy link");
+    }
+  };
+
+  // ─── Other handlers ──────────────────────────────────────────────────────────
   const submitPostComment = () => {
     if (!newComment.trim()) return;
-
     addComment(
       { postId: post.id, content: newComment.trim() },
       { onSuccess: () => setNewComment("") },
@@ -205,9 +278,7 @@ export default function PostCard({
     deletePost(post.id, {
       onSuccess: () => {
         setIsDeleteDialogOpen(false);
-        if (mode === "detail") {
-          router.push("/");
-        }
+        if (mode === "detail") router.push("/");
       },
       onError: () => {
         toast.error("Failed to delete post");
@@ -217,54 +288,25 @@ export default function PostCard({
   };
 
   const nextImage = useCallback(() => {
-    setActiveImageIndex((prev) =>
-      Math.min(prev + 1, (post.images?.length || 1) - 1),
-    );
+    setActiveImageIndex((prev) => Math.min(prev + 1, (post.images?.length || 1) - 1));
   }, [post.images?.length]);
 
   const prevImage = useCallback(() => {
     setActiveImageIndex((prev) => Math.max(prev - 1, 0));
   }, []);
 
-  const handleShare = async () => {
-    const shareUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}${postHref}`
-        : postHref;
-
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: post.title,
-          text: post.description,
-          url: shareUrl,
-        });
-        return;
-      }
-
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success("Post link copied");
-    } catch {
-      toast.error("Unable to share post");
-    }
-  };
-
   useEffect(() => {
     document.body.style.overflow = isFullscreen ? "hidden" : "unset";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
+    return () => { document.body.style.overflow = "unset"; };
   }, [isFullscreen]);
 
   useEffect(() => {
     if (!isFullscreen || !post.images?.length) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setIsFullscreen(false);
       if (e.key === "ArrowLeft") prevImage();
       if (e.key === "ArrowRight") nextImage();
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen, post.images?.length, nextImage, prevImage]);
@@ -284,7 +326,12 @@ export default function PostCard({
       <article
         className={`w-full bg-white overflow-hidden transition-colors pt-3 ${mode === "feed" ? "hover:bg-slate-50/20" : ""
           }`}
+        // ── Double-click navigates to full post in feed mode ──
+        onDoubleClick={() => {
+          if (mode === "feed") router.push(postHref);
+        }}
       >
+        {/* ── Header ── */}
         <div className="px-4 sm:px-5 flex flex-row items-start justify-between">
           <div className="flex gap-3 sm:gap-4 items-center">
             <UserMiniProfilePopover
@@ -309,7 +356,6 @@ export default function PostCard({
                     </AvatarFallback>
                   </Avatar>
                 </div>
-
                 <div className="flex flex-col">
                   <span className="font-semibold text-[15px] text-slate-900 leading-tight hover:text-[#1d9bf0] transition-colors">
                     {post.user?.displayName || "Unknown User"}
@@ -323,34 +369,17 @@ export default function PostCard({
           </div>
 
           <div className="flex items-center gap-2">
-            <span
-              className={`px-2.5 py-0.5 text-[11px] font-semibold border uppercase tracking-wider rounded-full ${post.status?.toUpperCase() === "OPEN"
-                ? "bg-blue-50 text-blue-600 border-blue-100"
-                : "bg-slate-100 text-slate-600 border-slate-200"
-                }`}
-            >
-              {post.status || "OPEN"}
-            </span>
-
-            <span
-              className={`px-2.5 py-0.5 text-[11px] font-semibold border uppercase tracking-wider rounded-full ${typeStyles}`}
-            >
-              {post.type}
-            </span>
-
-            <span className="px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 uppercase tracking-wider rounded-full hidden sm:inline-block">
-              {post.category?.name}
-            </span>
+            {/* ── Nicer status / type / category badges ── */}
+            <StatusBadge status={post.status} />
+            <TypeBadge type={post.type} />
+            <CategoryBadge name={post.category?.name} />
 
             {currentUser && (
               <DropdownMenu>
                 <DropdownMenuTrigger className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1.5 ml-1 transition-colors outline-none rounded-full flex items-center justify-center">
                   <MoreVertical size={20} />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-44 rounded-xl border-slate-100 shadow-md p-1"
-                >
+                <DropdownMenuContent align="end" className="w-44 rounded-xl border-slate-100 shadow-md p-1">
                   {isOwner && (
                     <DropdownMenuItem
                       onClick={() => setIsEditModalOpen(true)}
@@ -359,7 +388,6 @@ export default function PostCard({
                       <Pencil size={14} className="mr-2" /> Edit Post
                     </DropdownMenuItem>
                   )}
-
                   {canManage && (
                     <DropdownMenuItem
                       onClick={() => setIsDeleteDialogOpen(true)}
@@ -368,7 +396,6 @@ export default function PostCard({
                       <Trash2 size={14} className="mr-2" /> Delete
                     </DropdownMenuItem>
                   )}
-
                   {!isOwner && (
                     <DropdownMenuItem
                       onClick={() => setIsReportModalOpen(true)}
@@ -377,28 +404,13 @@ export default function PostCard({
                       <Flag size={14} className="mr-2" /> Report
                     </DropdownMenuItem>
                   )}
-
-                  <DropdownMenuItem
-                    onClick={handleShare}
-                    className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50"
-                  >
-                    <Share2 size={14} className="mr-2" /> Share
-                  </DropdownMenuItem>
-
-                  {mode === "feed" && (
-                    <DropdownMenuItem
-                      onClick={() => router.push(postHref)}
-                      className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50"
-                    >
-                      <ExternalLink size={14} className="mr-2" /> Open post
-                    </DropdownMenuItem>
-                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
           </div>
         </div>
 
+        {/* ── Body ── */}
         <div className="px-4 sm:px-5 pb-3 mt-3">
           {mode === "feed" ? (
             <Link href={postHref} className="block group">
@@ -416,16 +428,7 @@ export default function PostCard({
             {post.description}
           </p>
 
-          {mode === "feed" && (
-            <div className="mt-3">
-              <Link
-                href={postHref}
-                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#1d9bf0] hover:underline underline-offset-2"
-              >
-                View full post <ExternalLink size={14} />
-              </Link>
-            </div>
-          )}
+          {/* ── "View full post" link is removed — double-click handles navigation ── */}
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-slate-200/80 bg-slate-50/70">
@@ -459,7 +462,6 @@ export default function PostCard({
                   ) : null
                 }
               />
-
               <InfoRow
                 icon={<CalendarDays size={16} />}
                 label="Date"
@@ -469,7 +471,6 @@ export default function PostCard({
                   </span>
                 }
               />
-
               {post.contactInfo && (
                 <InfoRow
                   icon={<Phone size={16} />}
@@ -481,7 +482,6 @@ export default function PostCard({
                   }
                 />
               )}
-
               {rewardAmount > 0 && (
                 <InfoRow
                   icon={<Gift size={16} />}
@@ -497,6 +497,7 @@ export default function PostCard({
           </div>
         </div>
 
+        {/* ── Map ── */}
         {showMap && hasCoordinates && (
           <div className="px-4 sm:px-5 mb-4 animate-in fade-in duration-200">
             <div className="overflow-hidden rounded-2xl border border-slate-200">
@@ -509,6 +510,7 @@ export default function PostCard({
           </div>
         )}
 
+        {/* ── Images ── */}
         {post.images && post.images.length > 0 && (
           <div className="px-4 sm:px-5 mb-2">
             <div
@@ -548,27 +550,19 @@ export default function PostCard({
                   <Button
                     variant="ghost"
                     className="absolute left-2 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 p-0 bg-white/85 text-slate-900 hover:bg-white shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity disabled:opacity-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      prevImage();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
                     disabled={activeImageIndex === 0}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </Button>
-
                   <Button
                     variant="ghost"
                     className="absolute right-2 top-1/2 -translate-y-1/2 z-20 rounded-full w-10 h-10 p-0 bg-white/85 text-slate-900 hover:bg-white shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity disabled:opacity-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      nextImage();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
                     disabled={activeImageIndex === post.images.length - 1}
                   >
                     <ChevronRight className="h-5 w-5" />
                   </Button>
-
                   <div className="absolute bottom-3 right-3 z-20 bg-slate-900/70 text-white px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide shadow-sm backdrop-blur-sm pointer-events-none">
                     {activeImageIndex + 1} / {post.images.length}
                   </div>
@@ -588,8 +582,10 @@ export default function PostCard({
           </div>
         )}
 
+        {/* ── Action bar ── */}
         <div className="px-3 py-1.5 flex items-center justify-between mt-1">
           <div className="flex items-center justify-around sm:justify-start sm:gap-6 flex-1 sm:flex-none">
+            {/* Help / Like */}
             <button
               onClick={() => {
                 if (!currentUser) return toast.warning("Please log in to support posts.");
@@ -603,8 +599,7 @@ export default function PostCard({
             >
               <HandHelping
                 size={18}
-                className={`group-hover:-translate-y-0.5 transition-transform ${post.liked ? "text-blue-600" : ""
-                  }`}
+                className={`group-hover:-translate-y-0.5 transition-transform ${post.liked ? "text-blue-600" : ""}`}
               />
               <span className="hidden sm:inline-block">Help</span>{" "}
               {Number(post.likeCount ?? post.LikeCount ?? 0) > 0
@@ -612,6 +607,7 @@ export default function PostCard({
                 : ""}
             </button>
 
+            {/* Comment */}
             <button
               className={`flex items-center gap-2 font-medium text-[14px] transition-colors rounded-full px-4 py-2 group ${showComments
                 ? "text-slate-800 bg-slate-100"
@@ -627,18 +623,71 @@ export default function PostCard({
               {Number(post.commentCount ?? 0) > 0 ? `(${post.commentCount})` : ""}
             </button>
 
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-2 text-slate-500 font-medium text-[14px] hover:text-slate-800 hover:bg-slate-100 transition-colors rounded-full px-4 py-2 group"
-            >
-              <Share2
-                size={18}
-                className="group-hover:-translate-y-0.5 transition-transform"
-              />
-              <span className="hidden sm:inline-block">Share</span>
-            </button>
+            {/* ── Share dropdown with social options ── */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 text-slate-500 font-medium text-[14px] hover:text-slate-800 hover:bg-slate-100 transition-colors rounded-full px-4 py-2 group outline-none">
+                <Share2
+                  size={18}
+                  className="group-hover:-translate-y-0.5 transition-transform"
+                />
+                <span className="hidden sm:inline-block">Share</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-48 rounded-xl border-slate-100 shadow-md p-1"
+              >
+                <DropdownMenuItem
+                  onClick={handleShareFacebook}
+                  className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50 gap-2.5"
+                >
+                  <svg viewBox="0 0 24 24" className="w-[15px] h-[15px] fill-[#1877f2] shrink-0" aria-hidden="true">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                  Facebook
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleShareTwitter}
+                  className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50 gap-2.5"
+                >
+                  <svg viewBox="0 0 24 24" className="w-[15px] h-[15px] fill-[#000000] shrink-0" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  Twitter / X
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleShareWhatsApp}
+                  className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50 gap-2.5"
+                >
+                  {/* WhatsApp icon via inline SVG — not in lucide */}
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="w-[15px] h-[15px] fill-[#25d366] shrink-0"
+                    aria-hidden="true"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                  WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleShareTelegram}
+                  className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50 gap-2.5"
+                >
+                  <Send size={15} className="text-[#229ed9] shrink-0" />
+                  Telegram
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 bg-slate-100" />
+                <DropdownMenuItem
+                  onClick={handleCopyLink}
+                  className="cursor-pointer rounded-lg font-medium py-2 px-3 focus:bg-slate-50 gap-2.5"
+                >
+                  <Copy size={15} className="text-slate-500 shrink-0" />
+                  Copy link
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
+          {/* Bookmark */}
           <button
             onClick={() => {
               if (!currentUser) return toast.warning("Please log in to save posts.");
@@ -661,6 +710,7 @@ export default function PostCard({
           </button>
         </div>
 
+        {/* ── Comments ── */}
         {showComments && (
           <div className="flex flex-col w-full border-t border-slate-100">
             <div className="max-h-[28rem] overflow-y-auto block pr-2 px-4 sm:px-5 pt-2">
@@ -693,7 +743,6 @@ export default function PostCard({
                 </div>
               )}
             </div>
-
             <div className="px-4 sm:px-5 py-4 border-t border-slate-100 bg-white mt-auto">
               <CommentInput
                 value={newComment}
@@ -708,6 +757,7 @@ export default function PostCard({
         )}
       </article>
 
+      {/* ── Fullscreen viewer ── */}
       {isFullscreen && post.images && post.images.length > 0 && (
         <div
           className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center backdrop-blur-md"
@@ -723,10 +773,7 @@ export default function PostCard({
 
           {post.images.length > 1 && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                prevImage();
-              }}
+              onClick={(e) => { e.stopPropagation(); prevImage(); }}
               disabled={activeImageIndex === 0}
               className="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-0 p-3 sm:p-4 z-[100000] transition-colors rounded-full hover:bg-white/10"
               aria-label="Previous image"
@@ -737,10 +784,7 @@ export default function PostCard({
 
           {post.images.length > 1 && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                nextImage();
-              }}
+              onClick={(e) => { e.stopPropagation(); nextImage(); }}
               disabled={activeImageIndex === post.images.length - 1}
               className="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white disabled:opacity-0 p-3 sm:p-4 z-[100000] transition-colors rounded-full hover:bg-white/10"
               aria-label="Next image"
@@ -771,6 +815,7 @@ export default function PostCard({
         </div>
       )}
 
+      {/* ── Modals ── */}
       {isEditModalOpen && (
         <PostFormModal
           open={isEditModalOpen}

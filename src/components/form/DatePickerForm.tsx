@@ -75,7 +75,7 @@ export default function DatePickerForm<TFieldValues extends FieldValues>({
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "h-9 w-full justify-between rounded-md px-3 text-left font-normal",
+                    "h-9 w-full justify-between px-2 text-left font-normal",
                     !field.value && "text-muted-foreground",
                     buttonClassName
                   )}

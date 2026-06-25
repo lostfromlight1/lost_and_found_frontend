@@ -1,13 +1,9 @@
-import ProtectedLayoutClient from "@/app/(protected)/ProtectedLayoutClient"; // <-- Import our global shell
+import DashboardLayoutClient from "./DashboardLayoutClient";
 
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <ProtectedLayoutClient>
-      {children}
-    </ProtectedLayoutClient>
-  );
+  return <DashboardLayoutClient>{children}</DashboardLayoutClient>;
 }
