@@ -15,15 +15,18 @@ export enum NotificationStatus {
   READ = "READ",
 }
 
-export interface NotificationSummary {
-  id: number;
-  userName: string;
-  userAvatarUrl?: string | null;
-  type: NotificationType;
-  status: NotificationStatus;
-  title: string;
-  createdAt: string;
-}
+export type NotificationSummary = {
+    id: number;
+    userName: string;
+    userAvatarUrl?: string | null;
+    type: NotificationType;
+    status: NotificationStatus;
+    title: string;
+    postId?: number | null;
+    commentId?: number | null;
+    replyId?: number | null;
+    createdAt: string;
+};
 
 export interface NotificationDto extends NotificationSummary {
   userId: number;

@@ -141,7 +141,7 @@ export default function LeftSidebar({ onPostClick }: LeftSidebarProps) {
             className="mt-4 flex items-center justify-center xl:justify-start gap-5 p-3 xl:px-4 xl:py-3 rounded-full w-fit mx-auto xl:mx-0 xl:w-full text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-all"
           >
             <Edit3 size={26} strokeWidth={1.5} />
-            <span className="hidden xl:block text-[18px] font-normal">Write</span>
+            <span className="hidden xl:block text-[18px] font-normal">Create</span>
           </button>
         )}
 

@@ -101,7 +101,7 @@ const ReplyItem = ({
   };
 
   return (
-    <div className={`relative pt-3 ${effectiveIndent} min-w-fit`}>
+    <div id={`reply-${reply.id}`} className={`relative pt-3 ${effectiveIndent} min-w-fit`}>
       {/* Thread line */}
       <div className="absolute left-3 top-0 bottom-0 w-px bg-slate-100 z-0" />
       <div className="absolute left-3 top-7 w-4 h-px bg-slate-100 z-0" />
@@ -256,7 +256,10 @@ export default function CommentCard({ comment, postId, currentUser }: { comment:
   const hasReplies = (comment.replies?.length ?? 0) > 0;
 
   return (
-    <div className="flex flex-col w-full pb-2 pt-4 border-b border-slate-50 last:border-0 overflow-x-auto scrollbar-hide">
+    <div
+      id={`comment-${comment.id}`}
+      className="flex flex-col w-full pb-2 pt-4 border-b border-slate-50 last:border-0 overflow-x-auto scrollbar-hide"
+    >
       <div className="flex gap-2 relative min-w-fit pr-6">
         {(hasReplies || isReplying) && isOpen && (
           <div className="absolute left-5 top-10 bottom-0 w-px bg-slate-100 z-0" />

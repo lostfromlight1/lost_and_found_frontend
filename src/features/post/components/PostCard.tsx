@@ -181,9 +181,18 @@ function CategoryBadge({ name }: { name?: string }) {
 type PostCardProps = {
   post: PostResponseDto;
   mode?: "feed" | "detail";
+  targetCommentId?: number;
+  targetReplyId?: number;
 };
 
-export default function PostCard({ post, mode = "feed" }: PostCardProps) {
+
+export default function PostCard({
+  post,
+  mode = "feed",
+  targetCommentId,
+  targetReplyId,
+}: PostCardProps) {
+
   const router = useRouter();
   const { data: session } = useSession();
   const [showComments, setShowComments] = useState(mode === "detail");
@@ -195,8 +204,8 @@ export default function PostCard({ post, mode = "feed" }: PostCardProps) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [visibleCommentsCount, setVisibleCommentsCount] = useState(
-    mode === "detail" ? 10 : 3,
-  );
+  mode === "detail" ? (targetCommentId || targetReplyId ? 9999 : 10) : 3,
+);
 
   const { data: comments, isLoading: isLoadingComments } = usePostComments(
     showComments ? post.id : 0,
@@ -306,14 +315,41 @@ export default function PostCard({ post, mode = "feed" }: PostCardProps) {
       if (e.key === "Escape") setIsFullscreen(false);
       if (e.key === "ArrowLeft") prevImage();
       if (e.key === "ArrowRight") nextImage();
-    };
+
+    };  
+
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isFullscreen, post.images?.length, nextImage, prevImage]);
 
   useEffect(() => {
-    setVisibleCommentsCount(mode === "detail" ? 10 : 3);
-  }, [showComments, post.id, mode]);
+  if (!showComments || isLoadingComments) return;
+  if (!targetCommentId && !targetReplyId) return;
+
+  const elementId = targetReplyId
+    ? `reply-${targetReplyId}`
+    : `comment-${targetCommentId}`;
+
+  const timer = setTimeout(() => {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-[#1d9bf0]", "rounded-xl");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-[#1d9bf0]", "rounded-xl");
+      }, 2000);
+    }
+  }, 300);
+
+  return () => clearTimeout(timer);
+}, [showComments, isLoadingComments, targetCommentId, targetReplyId]);
+
+  useEffect(() => {
+  setVisibleCommentsCount(
+    mode === "detail" ? (targetCommentId || targetReplyId ? 9999 : 10) : 3,
+  );
+}, [showComments, post.id, mode, targetCommentId, targetReplyId]);
 
   useEffect(() => {
     if (activeImageIndex > (post.images?.length || 1) - 1) {
@@ -428,7 +464,18 @@ export default function PostCard({ post, mode = "feed" }: PostCardProps) {
             {post.description}
           </p>
 
-          {/* ── "View full post" link is removed — double-click handles navigation ── */}
+
+          {/* {mode === "feed" && (
+            <div className="mt-3">
+              <Link
+                href={postHref}
+                className="inline-flex items-center gap-1 text-[13px] font-semibold text-[#1d9bf0] hover:underline underline-offset-2"
+              >
+                View full post <ExternalLink size={14} />
+              </Link>
+            </div>
+          )} */}
+
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-slate-200/80 bg-slate-50/70">

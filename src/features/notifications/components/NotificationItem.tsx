@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageCircle, ShieldAlert, AtSign, Trash2, CheckCircle2, Bell } from "lucide-react";
+import { HandHelping, MessageCircle, ShieldAlert, AtSign, Trash2, CheckCircle2, Bell } from "lucide-react";
 import { NotificationSummary, NotificationStatus, NotificationType } from "../api/response/notifications.response";
 import { useDeleteNotification, useMarkAsRead } from "../hooks/useNotifications";
 
@@ -13,23 +14,24 @@ interface NotificationItemProps {
 const getIcon = (type: NotificationType) => {
   switch (type) {
     case NotificationType.POST_LIKED:
-      return <Heart className="w-4 h-4 text-red-500 fill-red-500" />;
+      return <HandHelping className="w-4 h-4 text-blue-600" />;
     case NotificationType.COMMENT_CREATED:
     case NotificationType.REPLY_CREATED:
     case NotificationType.REPLY_TO_REPLY:
-      return <MessageCircle className="w-4 h-4 text-[#1d9bf0]" />;
+      return <MessageCircle className="w-4 h-4 text-emerald-500" />;
     case NotificationType.MENTION:
-      return <AtSign className="w-4 h-4 text-emerald-500" />;
+      return <AtSign className="w-4 h-4 text-amber-500" />;
     case NotificationType.REPORT_SUBMITTED:
     case NotificationType.REPORT_RESOLVED:
     case NotificationType.REPORT_REJECTED:
-      return <ShieldAlert className="w-4 h-4 text-amber-500" />;
+      return <ShieldAlert className="w-4 h-4 text-red-500" />;
     default:
       return <Bell className="w-4 h-4 text-slate-500" />;
   }
 };
 
 export function NotificationItem({ notification }: NotificationItemProps) {
+  const router = useRouter();
   const isUnread = notification.status === NotificationStatus.UNREAD;
   const { mutate: markAsRead } = useMarkAsRead();
   const { mutate: deleteNotif, isPending: isDeleting } = useDeleteNotification();
@@ -38,9 +40,34 @@ export function NotificationItem({ notification }: NotificationItemProps) {
     if (isUnread) markAsRead(notification.id);
   };
 
+  const handleNavigate = () => {
+    handleRead();
+
+    const { type, postId, commentId, replyId } = notification;
+
+    if (!postId) return;
+
+    switch (type) {
+      case NotificationType.COMMENT_CREATED:
+        router.push(`/posts/${postId}?commentId=${commentId}`);
+        break;
+      case NotificationType.REPLY_CREATED:
+      case NotificationType.REPLY_TO_REPLY:
+        router.push(`/posts/${postId}?replyId=${replyId}`);
+        break;
+      case NotificationType.POST_LIKED:
+      case NotificationType.MENTION:
+      case NotificationType.POST_STATUS_CHANGED:
+        router.push(`/posts/${postId}`);
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div 
-      onClick={handleRead}
+      onClick={handleNavigate}
       className={`group flex items-start gap-4 p-4 md:p-6 border-b border-slate-100 transition-colors cursor-pointer ${
         isUnread ? "bg-slate-50/50" : "bg-white hover:bg-slate-50/30"
       }`}
