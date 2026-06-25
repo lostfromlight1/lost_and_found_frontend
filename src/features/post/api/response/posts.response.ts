@@ -13,7 +13,7 @@ export interface UserSummaryDto {
   id: number;
   displayName: string;
   avatarUrl?: string;
-  email: string; 
+  email: string;
 }
 
 export interface PostResponseDto {
@@ -21,23 +21,24 @@ export interface PostResponseDto {
   title: string;
   description: string;
   type: "LOST" | "FOUND";
-  status: "OPEN" | "CLOSE" | "RESOLVED"; 
+  status: "OPEN" | "CLOSE" | "RESOLVED";
   city: string;
   locationDetails: string;
-  latitude: number;  
+  latitude: number;
   longitude: number;
-  lostFoundDate: string; 
-  createdAt: string; 
+  lostFoundDate: string;
+  createdAt: string;
   contactInfo: string;
-  reward: number | null; 
+  reward: number | null;
   user: UserSummaryDto;
   category: CategoryDto;
   images: ImageDto[];
-  likeCount?: number; 
-  LikeCount?: number; 
+  likeCount?: number;
+  LikeCount?: number;
   liked: boolean;
   commentCount: number;
   bookmarked: boolean;
+  imageUrl: string;
 }
 
 export interface PageResponse<T> {
