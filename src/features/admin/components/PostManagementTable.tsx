@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react"; 
+import { Eye, Trash2 } from "lucide-react"; 
 import AppTable, { TableColumn } from "@/components/AppTable"; 
 import { usePosts, useDeletePost } from "@/features/post/hooks/usePosts";
 import { PostResponseDto } from "@/features/post/api/response/posts.response";
@@ -10,10 +11,10 @@ import PostFormModal from "@/features/post/components/PostFormModal";
 import { cn } from "@/lib/utils";
 
 export default function PostManagementTable() {
+  const router = useRouter();
   const [page] = useState(0); 
   const [size] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [postToEdit, setPostToEdit] = useState<PostResponseDto | null>(null);
 
   const { data: pageData, isLoading } = usePosts({ page, size });
   const posts = pageData?.content || [];
@@ -21,13 +22,11 @@ export default function PostManagementTable() {
   const { mutate: deletePost, isPending: isDeleting } = useDeletePost();
 
   const handleAdd = () => {
-    setPostToEdit(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (post: PostResponseDto) => {
-    setPostToEdit(post);
-    setIsModalOpen(true);
+  const handleView = (post: PostResponseDto) => {
+    router.push(`/posts/${post.id}`);
   };
 
   const handleDelete = (id: number) => {
@@ -106,17 +105,17 @@ export default function PostManagementTable() {
       key: "actions",
       header: "Actions",
       width: 120,
-      className: "text-center", // <-- CENTERED HEADER
+      className: "text-center",
       render: (_, row) => (
-        <div className="flex items-center gap-1 justify-end"> {/* <-- RIGHT ALIGNED ICONS */}
+        <div className="flex items-center gap-1 justify-end">
           <Button 
             variant="ghost" 
             size="sm" 
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
-            onClick={() => handleEdit(row)}
-            title="Edit Post"
+            onClick={() => handleView(row)}
+            title="View Post"
           >
-            <Pencil size={16} />
+            <Eye size={16} />
           </Button>
           <Button 
             variant="ghost" 
@@ -146,7 +145,7 @@ export default function PostManagementTable() {
       <PostFormModal 
         open={isModalOpen} 
         onOpenChange={setIsModalOpen} 
-        postToEdit={postToEdit} 
+        postToEdit={null} 
       />
     </div>
   );
