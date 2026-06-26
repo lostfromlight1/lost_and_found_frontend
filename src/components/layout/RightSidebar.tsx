@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,9 @@ import { useForm } from "react-hook-form";
 import { Form } from "@/components/ui/form";
 import DateRangePickerForm from "@/components/form/DateRangePickerForm";
 import { DateRange } from "react-day-picker";
-import Link from "next/link";
+
+// --- IMPORT COMPONENT & TYPE EXTRACTION ---
+import SupportModal, { ModalType } from "@/components/SupportModal"; // Adjust path if needed
 
 const MYANMAR_CITIES = [
   { label: "Yangon", value: "YANGON" },
@@ -71,6 +73,21 @@ export default function RightSidebar({
   setEndDate,
   categoriesList,
 }: RightSidebarProps) {
+
+  // --- MODAL STATE MANAGEMENT ---
+  const [modalType, setModalType] = useState<ModalType>(null);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
+  const openModal = (type: Exclude<ModalType, null>) => {
+    setModalType(type);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setModalType(null);
+  };
+
   const currentDateRange = useMemo<DateRange | undefined>(() => {
     if (!startDate && !endDate) return undefined;
 
@@ -243,21 +260,25 @@ export default function RightSidebar({
           </li>
         </ul>
 
+        {/* MODAL LINKS CONVERTED TO NATIVE INTERACTIVE BUTTONS */}
         <div className="mt-12 flex flex-wrap gap-x-4 gap-y-2 text-[11px] text-slate-400 font-bold uppercase tracking-tighter">
-          <Link href="/help" className="hover:text-slate-900 transition-colors">
-            Help
-          </Link>
-          <Link href="/privacy" className="hover:text-slate-900 transition-colors">
+          <button onClick={() => openModal("contact")} className="hover:text-slate-900 hover:underline transition-all text-blue-500 cursor-pointer">
+            Help & Support
+          </button>
+          <button onClick={() => openModal("privacy")} className="hover:text-slate-900 hover:underline transition-all cursor-pointer">
             Privacy
-          </Link>
-          <Link href="/terms" className="hover:text-slate-900 transition-colors">
+          </button>
+          <button onClick={() => openModal("terms")} className="hover:text-slate-900 hover:underline transition-all cursor-pointer">
             Terms
-          </Link>
-          <Link href="/about" className="hover:text-slate-900 transition-colors">
+          </button>
+          <button onClick={() => openModal("about")} className="hover:text-slate-900 hover:underline transition-all cursor-pointer">
             About
-          </Link>
+          </button>
         </div>
       </div>
+
+      {/* --- RENDER MODAL INSIDE COMPONENT CONTEXT --- */}
+      <SupportModal isOpen={isModalOpen} modalType={modalType} onClose={closeModal} />
     </div>
   );
 }
