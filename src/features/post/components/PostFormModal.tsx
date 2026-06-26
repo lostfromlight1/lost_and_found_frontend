@@ -134,7 +134,7 @@ export default function PostFormModal({ open, onOpenChange, postToEdit }: PostFo
         title: postToEdit.title,
         description: postToEdit.description,
         type: postToEdit.type,
-        status: String(postToEdit.status) === "CLOSED" ? "CLOSE" : "OPEN", 
+        status: String(postToEdit.status) === "CLOSE" ? "CLOSE" : "OPEN", 
         categoryId: String(postToEdit.category.id), 
         city: postToEdit.city,
         locationDetails: postToEdit.locationDetails,

@@ -138,10 +138,28 @@ export const useUpdatePost = () => {
 
   return useMutation<PostResponseDto, unknown, { id: number; data: UpdatePostRequest }>({
     mutationFn: ({ id, data }) => updatePostService(id, data),
+
+
     onSuccess: (updatedPost) => {
       toast.success("Post updated successfully");
 
+
       queryClient.setQueryData(["post", updatedPost.id], updatedPost);
+
+
+      updatePostInAllPagedQueries(
+        queryClient,
+        ["posts"],
+        updatedPost.id,
+        () => updatedPost,
+      );
+      updatePostInAllPagedQueries(
+        queryClient,
+        ["bookmarked-posts"],
+        updatedPost.id,
+        () => updatedPost,
+      );
+
       queryClient.invalidateQueries({ queryKey: ["posts"] });
       queryClient.invalidateQueries({ queryKey: ["bookmarked-posts"] });
       queryClient.invalidateQueries({ queryKey: ["review-content"] });

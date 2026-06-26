@@ -122,23 +122,29 @@ function InfoRow({ icon, label, value, valueClassName = "", action }: InfoRowPro
 function StatusBadge({ status }: { status?: string }) {
   const s = status?.toUpperCase() ?? "OPEN";
 
-  const cfg: Record<string, { dot: string; pill: string; label: string }> = {
-    OPEN: {
-      dot: "bg-blue-500",
-      pill: "bg-blue-50 text-blue-700 border-blue-200",
-      label: "Open",
-    },
-    CLOSED: {
-      dot: "bg-slate-400",
-      pill: "bg-slate-100 text-slate-600 border-slate-200",
-      label: "Closed",
-    },
-    RESOLVED: {
-      dot: "bg-emerald-500",
-      pill: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      label: "Resolved",
-    },
-  };
+
+const cfg: Record<string, { dot: string; pill: string; label: string }> = {
+  OPEN: {
+    dot: "bg-blue-500",
+    pill: "bg-blue-50 text-blue-700 border-blue-200",
+    label: "Open",
+  },
+  CLOSE: {
+    dot: "bg-slate-400",
+    pill: "bg-slate-100 text-slate-600 border-slate-200",
+    label: "Resloved",
+  },
+  CLOSED: {  
+    dot: "bg-slate-400",
+    pill: "bg-slate-100 text-slate-600 border-slate-200",
+    label: "Closed",
+  },
+  RESOLVED: {
+    dot: "bg-emerald-500",
+    pill: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    label: "Resolved",
+  },
+};
 
   const { dot, pill, label } = cfg[s] ?? cfg.OPEN;
 

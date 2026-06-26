@@ -61,6 +61,7 @@ export default function PostFeed() {
   const visiblePosts = posts.filter(
     (post) =>
       post.status?.toUpperCase() !== "HIDDEN" &&
+      // post.status?.toUpperCase() !== "CLOSE" &&
       !(post as typeof post & { hidden?: boolean }).hidden,
   );
 
